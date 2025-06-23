@@ -1,10 +1,11 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 5.0 - The Fluidity & Layout Fix Update
+ * @version 6.0 - The Immersive Navigation Update
+ * - **Feature**: The chat window now automatically closes when Mobius navigates to a different section of the website, ensuring the user can see the smooth-scrolling animation and the highlight effect.
+ * - **Refactor**: Created a dedicated `closeChatWindow()` function to be used by both the close button and the navigation action.
  * - **Fix (Fluid Animation)**: Reworked the launcher's drag and snap logic. It now uses CSS classes and transitions for a fluid animation between a circle (while dragging) and a half-pill (when snapped to the screen edge).
  * - **Fix (Services Layout)**: Adjusted the padding on the services grid to prevent cards from being partially obscured by the fade-out gradient overlays on desktop views.
- * - **Refactor**: Simplified launcher animation logic by removing direct style manipulation in favor of a cleaner, class-based CSS approach.
  * @author Synappse
  */
 
@@ -219,7 +220,7 @@ We can't wait to potentially welcome you aboard!`;
             :root {
                 --mobius-primary: #6A0DAD;
                 --mobius-secondary: #0a0a0a;
-                --mobius-accent: #e0be07; /* Gold */
+                --mobius-accent: #FFD700; /* Gold */
                 --mobius-text: #f0f0f0;
                 --mobius-user-bg: #333;
             }
@@ -417,8 +418,27 @@ We can't wait to potentially welcome you aboard!`;
         document.body.insertAdjacentHTML('beforeend', widgetContainerHTML);
     }
 
-    function attachEventListeners() {
+    // NEW: Function to handle closing the chat window
+    function closeChatWindow() {
         const container = document.getElementById('mobius-container');
+        const launcher = document.getElementById('mobius-launcher');
+        if (!container || !launcher) return;
+
+        container.classList.remove('open');
+        document.getElementById('mobius-faq-overlay').classList.remove('open');
+        
+        // Ensure main chat view is visible when widget is re-opened next time
+        document.getElementById('mobius-messages').style.display = 'flex';
+        document.getElementById('mobius-input-area').style.display = 'flex';
+        
+        launcher.classList.add('visible');
+        launcher.style.transform = 'scale(1)';
+        launcher.style.pointerEvents = 'auto';
+        snapElementToNearestEdge(launcher, lastSnappedSide);
+    }
+
+    // MODIFIED: attachEventListeners now uses the new closeChatWindow function
+    function attachEventListeners() {
         const launcher = document.getElementById('mobius-launcher');
         const closeBtn = document.getElementById('mobius-close-btn');
         const sendBtn = document.getElementById('mobius-send-btn');
@@ -426,16 +446,7 @@ We can't wait to potentially welcome you aboard!`;
         const faqBtn = document.getElementById('mobius-faq-btn');
         const backBtn = document.getElementById('mobius-back-btn');
 
-        closeBtn.addEventListener('click', () => {
-            container.classList.remove('open');
-            document.getElementById('mobius-faq-overlay').classList.remove('open');
-            document.getElementById('mobius-messages').style.display = 'flex';
-            document.getElementById('mobius-input-area').style.display = 'flex';
-            launcher.classList.add('visible');
-            launcher.style.transform = 'scale(1)';
-            launcher.style.pointerEvents = 'auto';
-            snapElementToNearestEdge(launcher, lastSnappedSide);
-        });
+        closeBtn.addEventListener('click', closeChatWindow);
 
         sendBtn.addEventListener('click', handleSendMessage);
         input.addEventListener('keypress', (e) => {
@@ -551,11 +562,17 @@ We can't wait to potentially welcome you aboard!`;
         return null;
     }
 
+    // MODIFIED: This function now closes the chat window before dispatching the guide event.
     function guideTo(targetSelector, textToFind = null) {
-        console.log(`Mobius: Dispatching guide event for selector: '${targetSelector}', text: '${textToFind}'`);
-        document.dispatchEvent(new CustomEvent('mobius-guide', {
-            detail: { targetSelector, textToFind }
-        }));
+        closeChatWindow(); 
+
+        // Add a small delay to ensure the window closing animation starts before the scroll
+        setTimeout(() => {
+            console.log(`Mobius: Dispatching guide event for selector: '${targetSelector}', text: '${textToFind}'`);
+            document.dispatchEvent(new CustomEvent('mobius-guide', {
+                detail: { targetSelector, textToFind }
+            }));
+        }, 300); // Matches the window close transition duration
     }
 
     function initiateInterview() {
