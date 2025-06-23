@@ -1,0 +1,881 @@
+/* style.css */
+
+:root {
+    --primary-color: #6A0DAD; /* Deep Purple */
+    --secondary-color: #FFD700; /* Gold */
+    --accent-color: #00FFFF; /* Cyan */
+    --text-dark: #1a1a1a;
+    --text-light: #f0f0f0;
+    --bg-light: #ffffff;
+    --bg-dark: #0a0a0a;
+    --gradient-start: #6A0DAD; /* Purple */
+    --gradient-end: #4B0082; /* Indigo */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+    /* Hide scrollbar for Webkit browsers */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+html::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+
+body {
+    font-family: 'Inter', sans-serif;
+    color: var(--text-dark);
+    background-color: var(--bg-light);
+    line-height: 1.6;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    /* CSS to prevent text selection */
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none;   /* Safari */
+    -khtml-user-select: none;    /* Konqueror HTML */
+    -moz-user-select: none;      /* Old versions of Firefox */
+    -ms-user-select: none;       /* Internet Explorer/Edge */
+    user-select: none;           /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    margin-bottom: 0.5em;
+    color: var(--text-dark);
+}
+
+h1 { font-size: 3.5em; }
+h2 { font-size: 2.5em; }
+h3 { font-size: 1.8em; }
+p { font-size: 1.1em; margin-bottom: 1em; }
+
+/* Links & Buttons */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+a:hover {
+    color: var(--secondary-color);
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.8em 1.8em;
+    background: linear-gradient(45deg, var(--primary-color), var(--gradient-end));
+    color: var(--text-light);
+    border-radius: 50px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+.btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Sections */
+section {
+    padding: 80px 5%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.container {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 20px;
+    position: relative; /* Added for carousel buttons positioning */
+}
+
+/* --- Hero Section --- */
+#hero {
+    /* Adjusted radial-gradient for more subtle lighter movement and balanced darker shade */
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.01), #6A0DAD, #4B0082); /* Very subtle light, main purple, and darker indigo */
+    background-size: 400% 400%;
+    animation: movingGradient 16s ease infinite;
+    color: var(--text-light);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+}
+
+#hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    z-index: 1;
+}
+#hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    z-index: 1;
+}
+
+#hero .container {
+    position: relative;
+    z-index: 2;
+}
+
+#hero h1, #hero p, #hero .btn {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+#hero h1 { font-size: 5em; margin-bottom: 0.2em; color: var(--text-light); }
+#hero p { font-size: 1.5em; margin-bottom: 2em; color: rgba(255, 255, 255, 0.8); }
+
+
+#services {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    text-align: center;
+    /* Ensure it spans full width and allows cards to go end-to-end */
+    padding-left: 0;
+    padding-right: 0;
+}
+/* Add padding back to the container for content inside services */
+#services .container {
+    padding: 0 20px;
+}
+
+#services h2 {
+    margin-bottom: 1.5em;
+    color: var(--primary-color);
+}
+
+/* The services-carousel-wrapper is now a direct child of #services, allowing full width */
+.services-carousel-wrapper {
+    position: relative;
+    width: 100vw; /* Takes full viewport width */
+    left: 50%; /* Center it */
+    transform: translateX(-50%); /* Pull back half its width to truly center */
+    overflow: hidden; /* Hide cards outside the view */
+    margin-top: 3em; /* Keep spacing from above content */
+}
+
+/* Blur overlays for desktop carousel */
+.services-carousel-wrapper::before,
+.services-carousel-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 100px; /* Adjust blur width as needed */
+    z-index: 5;
+    pointer-events: none; /* Allow clicks to pass through */
+}
+
+.services-carousel-wrapper::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg-light), rgba(255, 255, 255, 0));
+}
+
+.services-carousel-wrapper::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg-light), rgba(255, 255, 255, 0));
+}
+
+/* Adjust blur visibility based on screen size */
+@media (max-width: 768px) {
+    .services-carousel-wrapper::before,
+    .services-carousel-wrapper::after {
+        display: none; /* Hide blur on mobile */
+    }
+}
+
+
+.services-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Removed scroll-snap-type for smooth auto-animation */
+    scroll-snap-type: none;
+    padding-bottom: 20px;
+    justify-content: flex-start;
+    gap: 20px;
+    /* No margin-top here, moved to services-carousel-wrapper */
+    position: relative;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    /* Add padding to the grid directly for visual alignment within the full-width wrapper */
+    padding-left: 5%;
+    padding-right: 5%;
+}
+.services-grid::-webkit-scrollbar {
+    display: none;
+}
+
+.service-card {
+    background-color: #fff;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    text-align: left;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    flex-shrink: 0;
+    width: 300px;
+    /* Removed scroll-snap-align for smooth auto-animation */
+    scroll-snap-align: none;
+}
+
+/* Class to hide elements before animation starts */
+.animate-hidden {
+    opacity: 0;
+    transform: translateY(50px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.service-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.service-card .icon {
+    font-size: 3em;
+    color: var(--primary-color);
+    margin-bottom: 0.5em;
+    transition: color 0.3s ease;
+}
+
+.service-card h3 {
+    color: var(--text-dark);
+    margin-bottom: 0.5em;
+}
+
+.service-card p {
+    font-size: 1em;
+    color: #555;
+    flex-grow: 1;
+}
+
+.service-card .preview-placeholder {
+    width: 100%;
+    height: 180px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    margin-top: 1em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #888;
+    font-style: italic;
+    overflow: hidden;
+    position: relative;
+}
+
+.service-card .preview-placeholder img,
+.service-card .preview-placeholder video,
+.service-card .preview-placeholder lottie-player {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Dot navigation for mobile carousel */
+.service-dots, .philosophy-dots {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    padding-bottom: 20px; /* Add padding for space below dots */
+    display: none; /* Hidden by default, shown on mobile */
+}
+
+.service-dot, .philosophy-dot-item {
+    width: 10px;
+    height: 10px;
+    background-color: #ccc;
+    border-radius: 50%;
+    margin: 0 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.service-dot.active, .philosophy-dot-item.active {
+    background-color: var(--primary-color);
+    transform: scale(1.2);
+}
+
+
+/* Carousel Navigation Buttons for Philosophy */
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: none; /* Hidden by default for all unless specified by media queries */
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    color: var(--primary-color);
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
+    z-index: 10;
+}
+
+.carousel-btn:hover {
+    background-color: #fff;
+    transform: translateY(-50%) scale(1.05);
+}
+
+.carousel-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* --- About Section (Our Philosophy) --- */
+ #about {
+    background: linear-gradient(135deg, #6A0DAD, #4B0082);
+    background-size: 400% 400%;
+    animation: movingGradient 16s ease infinite;
+    color: var(--text-light);
+    text-align: center;
+    position: relative;
+}
+
+#about h2 {
+    color: var(--secondary-color);
+    margin-bottom: 1em;
+}
+
+#about p {
+    max-width: 800px;
+    margin: 0 auto 2em auto;
+    font-size: 1.2em;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.philosophy-points {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap; /* Default for carousel */
+    overflow-x: auto; /* Default for carousel */
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory; /* Default for carousel */
+    padding-bottom: 20px;
+    justify-content: flex-start;
+    gap: 20px;
+    margin-top: 3em;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    /* Aligns first card with container padding */
+    padding-left: 20px;
+    padding-right: 20px;
+}
+.philosophy-points::-webkit-scrollbar {
+    display: none;
+}
+
+.philosophy-point {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 350px;
+    text-align: left; /* Keep left aligned for consistency */
+    transition: transform 0.3s ease, background-color 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    /* Align content to the start (top) of the flex container */
+    justify-content: flex-start;
+    overflow: hidden;
+    flex-shrink: 0; /* Default for carousel */
+    width: 300px; /* Default for carousel */
+    min-height: 300px; /* Maintain minimum height for consistent card size */
+    scroll-snap-align: center; /* Default for carousel */
+}
+
+.philosophy-point:hover {
+    transform: translateY(-5px);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.philosophy-point h3 {
+    color: var(--secondary-color); /* Changed from var(--accent-color) (Cyan) to var(--secondary-color) (Gold) */
+    margin-bottom: 0.25em; /* Reduced margin to bring text closer to title */
+}
+
+.philosophy-point p {
+    font-size: 1em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0; /* Ensure no extra margin below the last paragraph */
+}
+
+
+/* --- Achievements Section (Flip Cards) --- */
+#achievements {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    text-align: center;
+}
+
+#achievements h2 {
+    margin-bottom: 1.5em;
+    color: var(--primary-color);
+}
+
+#achievements p {
+    max-width: 800px;
+    margin: 0 auto 2em auto;
+    font-size: 1.1em;
+    color: #555;
+}
+
+.badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 30px;
+    justify-content: center;
+    margin-top: 3em;
+    perspective: 1000px;
+}
+
+.badge-item {
+    background-color: transparent;
+    border-radius: 15px;
+    /* Explicit transition for transform, fixing previous issues */
+    transition: transform 0.6s ease;
+    transform-style: preserve-3d;
+    position: relative;
+    width: 100%;
+    height: 220px;
+    cursor: pointer;
+}
+
+/* New class for flipped state */
+.badge-item.is-flipped {
+    transform: rotateY(180deg);
+}
+
+.badge-front, .badge-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 15px;
+    background-color: #fff;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.badge-item:hover .badge-front, .badge-item:hover .badge-back {
+     box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+}
+
+.badge-front { z-index: 2; }
+.badge-back { transform: rotateY(180deg); z-index: 1; justify-content: center; text-align: center; }
+
+/* This class is now only for initial state, JS will remove it */
+.badge-item.animate-hidden {
+    opacity: 0;
+    transform: translateY(50px);
+}
+
+.badge-item img {
+    max-width: 100px;
+    height: auto;
+    margin-bottom: 1em;
+}
+
+.badge-item h4 {
+    font-size: 1.1em;
+    color: var(--text-dark);
+    margin-bottom: 0.5em;
+}
+
+.badge-front p { display: none; }
+.badge-back p { font-size: 1em; color: #555; margin-bottom: 0; line-height: 1.4; }
+
+/* --- Modal Styles --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: var(--bg-dark);
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    color: var(--text-light);
+}
+
+.modal-overlay.open .modal-content {
+    transform: translateY(0);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 2em;
+    color: var(--text-light);
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-content h3 {
+    color: var(--secondary-color);
+    margin-bottom: 1em;
+    font-size: 2em;
+}
+
+#modalBadgesGrid.badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 30px;
+    justify-content: center;
+    margin-top: 1em;
+    perspective: 1000px;
+}
+
+/* Styles for additional footer modals */
+.modal-content .modal-text-content {
+    font-size: 1.1em;
+    line-height: 1.8;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: left;
+}
+
+.modal-content .modal-text-content h4 {
+    color: var(--accent-color);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-size: 1.5em;
+}
+
+.modal-content .modal-text-content p {
+    margin-bottom: 1em;
+}
+
+.modal-content .modal-text-content ul {
+    list-style: disc;
+    margin-left: 20px;
+    margin-bottom: 1em;
+}
+
+.modal-content .modal-text-content li {
+    margin-bottom: 0.5em;
+}
+
+
+/* Updated movingGradient keyframes for more dynamic shining effect */
+@keyframes movingGradient {
+    0% { background-position: 0% 0%; }
+    25% { background-position: 100% 0%; }
+    50% { background-position: 100% 100%; }
+    75% { background-position: 0% 100%; }
+    100% { background-position: 0% 0%; }
+}
+
+
+#cta {
+    /* Adjusted radial-gradient for even more subtle lighter movement */
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.01), #6A0DAD, #4B0082); /* Very subtle light, main purple, and darker indigo */
+    background-size: 400% 400%;
+    animation: movingGradient 16s ease infinite;
+    color: var(--text-light);
+    text-align: center;
+}
+
+#cta h2 { color: var(--secondary-color); margin-bottom: 1em; }
+#cta p { font-size: 1.3em; margin-bottom: 2em; color: rgba(255, 255, 255, 0.9); }
+.cta-button-wrapper { display: flex; justify-content: center; align-items: center; }
+
+/* --- Footer --- */
+footer {
+    background-color: var(--bg-dark);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 40px 5%;
+    text-align: center;
+    font-size: 0.9em;
+}
+
+footer .footer-links {
+    margin-top: 20px; /* Space from "Crafted..." text */
+    margin-bottom: 20px; /* Space below links */
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px 30px; /* Row and column gap */
+}
+
+footer .footer-links a {
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.3s ease;
+    white-space: nowrap; /* Prevent breaking of link text */
+}
+
+footer .footer-links a:hover {
+    color: var(--secondary-color);
+}
+
+/* New styles for payment methods */
+.payment-methods {
+    display: flex;
+    justify-content: center;
+    gap: 20px; /* Adjusted spacing between payment icons */
+    margin-top: 20px; /* Space above payment methods */
+    margin-bottom: 0;
+}
+
+.payment-method-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.payment-logo {
+    font-size: 1.1em; /* Reduced size of icons/text logos for PayPal */
+    color: rgba(255, 255, 255, 0.7); /* Default icon color, aligned with other footer text/icons */
+    transition: color 0.3s ease, transform 0.3s ease;
+    cursor: default; /* Indicate non-clickable */
+}
+
+.payment-logo:hover {
+    color: var(--secondary-color); /* Hover color */
+    transform: scale(1.1); /* Slight zoom on hover */
+}
+
+/* Specific styles for text-based logos for GCash and Maya to remove button feel */
+.gcash-logo, .maya-logo {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+
+    font-weight: 800; /* Even bolder text */
+    font-size: 0.8em; /* Further reduced size for text logos */
+    text-transform: uppercase; /* Ensure uppercase */
+    letter-spacing: 0.1em; /* More spread out for logo feel */
+    color: rgba(255, 255, 255, 0.7); /* Initial color */
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.2); /* Subtle text shadow */
+}
+
+.gcash-logo:hover, .maya-logo:hover {
+    background-color: transparent; /* Ensure no background on hover */
+    color: var(--secondary-color); /* Change text color on hover */
+}
+
+
+footer .social-links {
+    margin-top: 0; /* No top margin, as it's the first element */
+    margin-bottom: 20px; /* Space below social links */
+}
+
+footer .social-links a {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.5em;
+    margin: 0 15px;
+    transition: color 0.3s ease;
+}
+
+footer .social-links a:hover {
+    color: var(--accent-color);
+}
+
+footer .footer-copyright { /* New class for copyright paragraph */
+    margin-top: 20px; /* Space from footer links */
+    margin-bottom: 20px; /* Space below copyright text */
+}
+footer .footer-passion-text { /* New class for "Crafted with passion" text */
+    margin-top: 0;
+    margin-bottom: 20px; /* Space below this text */
+}
+
+
+/* --- Responsive Design --- */
+@media (min-width: 1025px) {
+    /* Services grid maintains carousel behavior */
+    .services-grid {
+        /* Padding here ensures the content aligns with the main container while the wrapper is full width */
+        padding-left: 20px;
+        padding-right: 20px;
+        /* Ensure enough space for blur, if using padding here instead of wrapper */
+        /* transform: translateX(-50px); */
+    }
+    .service-card { width: 300px; }
+
+    /* Philosophy section: GRID layout, no carousel */
+    .philosophy-points {
+        display: flex; /* keep flex for responsive wrapping */
+        flex-wrap: wrap; /* Allow cards to wrap to next line */
+        overflow-x: visible; /* No horizontal scrolling */
+        scroll-snap-type: none; /* Disable scroll snap */
+        justify-content: center; /* Center items when wrapping */
+        padding-left: 0; /* Remove padding for centered grid */
+        padding-right: 0; /* Remove padding for centered grid */
+    }
+    .philosophy-point {
+        flex-shrink: 1; /* Allow cards to shrink */
+        width: calc(33.333% - 20px); /* Approx 3 items per row with gap */
+        scroll-snap-align: none; /* Disable scroll snap align for individual items */
+    }
+
+    .philosophy-dots { display: none; } /* Hide dots on desktop */
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .philosophy-dots { display: flex; } /* Show dots on tablet */
+}
+
+@media (max-width: 1024px) {
+    #hero h1 { font-size: 4em; }
+    #hero p { font-size: 1.3em; }
+    h2 { font-size: 2em; }
+    h3 { font-size: 1.5em; }
+    p { font-size: 1em; }
+
+    /* Philosophy section: Carousel behavior on tablets/mobile */
+    .philosophy-points {
+        flex-wrap: nowrap; /* Keep items in a single row */
+        overflow-x: auto; /* Enable horizontal scrolling */
+        scroll-snap-type: x mandatory; /* Enable scroll snap */
+        justify-content: flex-start;
+        padding-left: 20px; /* Padding for carousel */
+        padding-right: 20px; /* Padding for carousel */
+    }
+    .philosophy-point {
+        flex-shrink: 0; /* Prevent cards from shrinking */
+        width: 300px; /* Fixed width for carousel */
+        scroll-snap-align: center; /* Align cards for snap */
+    }
+
+    #about .container { padding-left: 0; padding-right: 0; } /* Adjusted container padding */
+}
+
+@media (max-width: 768px) {
+    section { padding: 60px 5%; }
+    #hero h1 { font-size: 3em; }
+    #hero p { font-size: 1.1em; }
+    .btn { padding: 0.7em 1.5em; font-size: 0.9em; }
+    h2 { font-size: 1.8em; }
+    h3 { font-size: 1.3em; }
+
+    /* Mobile Services Carousel adjustments */
+    .services-grid {
+        flex-wrap: nowrap; /* Ensure single row */
+        overflow-x: scroll; /* Enable horizontal scrolling */
+        scroll-snap-type: x mandatory; /* Enable scroll snap */
+        justify-content: flex-start;
+        /* On mobile, services grid padding is handled directly to allow cards to align with section padding */
+        padding-left: 5%;
+        padding-right: 5%;
+    }
+    .service-card {
+        padding: 25px;
+        width: 90vw; /* Occupy most of the viewport width */
+        scroll-snap-align: center; /* Snap to center of card */
+        margin-right: 20px; /* Add margin to make sure snap works for all cards */
+    }
+    .service-card:last-child {
+        margin-right: 0; /* No margin on the last card */
+    }
+    .service-card .icon { font-size: 2.5em; }
+    .service-card .preview-placeholder { height: 150px; }
+
+    /* Show dot navigation on mobile */
+    .service-dots {
+        display: flex;
+    }
+    .philosophy-dots { display: flex; } /* Show dots on mobile */
+
+
+    /* Hide all carousel buttons on mobile */
+    .carousel-btn { display: none !important; } /* Use !important to override other rules */
+
+    #achievements .badges-grid { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px; }
+    .badge-item { height: 180px; } /* Increased height slightly for better visibility */
+    .badge-item img { max-width: 80px; } /* Increased image size slightly */
+    .badge-item h4 { font-size: 1.1em; } /* Increased font size */
+    .badge-back p { font-size: 0.9em; }
+    #achievements .btn { display: inline-block; }
+}
+
+@media (min-width: 769px) {
+    #achievements .badges-grid { display: grid; }
+    #achievements .btn { display: none; }
+}
+
+@media (max-width: 480px) {
+    #hero h1 { font-size: 2.5em; }
+    #hero p { font-size: 1em; }
+    h2 { font-size: 1.5em; }
+    h3 { font-size: 1.2em; }
+    p { font-size: 0.95em; }
+
+    .service-card { text-align: center; width: 90vw; } /* Adjusted width for smaller mobile screens */
+    .service-card .icon { margin: 0 auto 0.5em auto; }
+
+    .badges-grid { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+    .badge-item { height: 160px; } /* Adjusted height */
+    .badge-item img { max-width: 70px; } /* Adjusted image size */
+    .badge-item h4 { font-size: 0.9em; margin-bottom: 0.2em; } /* Adjusted font size */
+    .badge-back p { font-size: 0.8em; }
+    footer .social-links a { font-size: 1.2em; margin: 0 10px; }
+    footer .footer-links { gap: 10px 20px; } /* Smaller gap on small screens */
+}
