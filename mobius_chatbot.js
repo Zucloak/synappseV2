@@ -219,7 +219,7 @@ We can't wait to potentially welcome you aboard!`;
             :root {
                 --mobius-primary: #6A0DAD;
                 --mobius-secondary: #0a0a0a;
-                --mobius-accent: #FFD700; /* Gold */
+                --mobius-accent: #e0be07; /* Gold */
                 --mobius-text: #f0f0f0;
                 --mobius-user-bg: #333;
             }
