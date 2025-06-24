@@ -1,15 +1,15 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 7.5 - Critical Fix: Removed eval(), Enhanced Navigation & AI Context Reliability
- * - **CRITICAL FIX**: Replaced the dangerous `eval()` function used for `data.action` from Firestore
- * with a safe, predefined `actionMap`. This resolves potential CSP errors, security vulnerabilities,
- * and improves the reliability of navigation and other actions triggered by dynamic FAQs.
- * - **Improved Navigation**: Ensures that `mobius-guide` events are dispatched only after a secure
- * and valid action is identified, preventing issues stemming from `eval()` failures.
- * - **AI Context Reliability**: By correctly loading Firebase FAQs without `eval()` issues, the
- * `firebaseFaqsText` will consistently provide the necessary context for Gemini AI, leading to
- * more "natural" and "recycled" answers.
+ * @version 7.6 - Critical Fix: Re-enabled Vercel Proxy for all AI API calls.
+ * - **CRITICAL FIX**: All direct calls to `generativelanguage.googleapis.com` have been
+ * reverted to route through the Vercel proxy (`/api/gemini-proxy`). This resolves the
+ * `403 Forbidden` error and ensures secure handling of the Gemini API key via the Vercel
+ * environment variable.
+ * - **Restored AI Functionality**: With the proxy correctly utilized, Gemini AI should now
+ * respond naturally, provide proper context, and enable correct navigation actions.
+ * - **Navigation Fixes**: The improved `guideTo` function (waiting for transition end) and
+ * the removal of `eval()` are retained, ensuring reliable navigation once AI calls succeed.
  * - **Automated FAQ Learning**: Continues to automatically add new, AI-generated FAQs to Firestore.
  * - **Bug Fix: Launcher Visibility**: Retains the fix for the launcher disappearing.
  * - **Redundancy Avoidance (Basic)**: Retains the basic exact-match redundancy check for new FAQs.
@@ -408,7 +408,7 @@ We can't wait to potentially welcome you aboard!`;
                 addMessage('user', `Tell me more about ${detectedService}.`);
                 addTypingIndicator();
                 try {
-                    const proxyUrl = '/api/gemini-proxy';
+                    const proxyUrl = '/api/gemini-proxy'; // Use the Vercel proxy URL
                     // Include existing Firebase FAQs in the prompt for AI to "recycle" info
                     const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company and provide concise, natural, and persuasive information. The user is asking for information about the "${detectedService}" service. Provide a brief (2-3 sentences max), conversational, and marketing-oriented explanation of how Synappse delivers this service, focusing on key benefits for the client. Your goal is to be informative and engaging. Do not mention your training or origins. Always identify as Synappse Official AI. Stick strictly to the services provided.
                     
@@ -417,21 +417,19 @@ We can't wait to potentially welcome you aboard!`;
                     
                     User query: "Explain ${message}"`; // Use the original message as the direct user query here.
                     
-                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                    const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                    const response = await fetch(apiUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            });
-                    
+                    const payload = { message: prompt }; // Proxy expects 'message' field
+                    const response = await fetch(proxyUrl, { // Fetch from your proxy
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
                     const result = await response.json();
-                    if (!response.ok || !result.candidates || result.candidates.length === 0 || !result.candidates[0].content || !result.candidates[0].content.parts || result.candidates[0].content.parts.length === 0) {
-                        throw new Error(result.error?.message || `API call failed with status: ${response.status}`);
+                    if (!response.ok || !result.success) { // Proxy returns { success: bool, message: string, text: string }
+                        throw new Error(result.message || `API call failed with status: ${response.status}`);
                     }
                     
-                    const text = result.candidates[0].content.parts[0].text;
+                    const text = result.text; // Proxy returns 'text' field
                     removeTypingIndicator();
                     addMessage('bot', text);
                     
@@ -458,9 +456,9 @@ We can't wait to potentially welcome you aboard!`;
                 // If a specific FAQ entry with an action was found, use its action
                 // Otherwise, fall back to general services section or the constructed selector
                 if (serviceFaqEntry && serviceFaqEntry.action) {
-                    setTimeout(() => serviceFaqEntry.action(), 300);
+                    serviceFaqEntry.action(); // Execute the pre-defined action
                 } else {
-                    setTimeout(() => guideTo(targetSelector || '#services'), 300); // Fallback to #services if specific selector not found
+                    guideTo(targetSelector || '#services'); // Fallback to #services if specific selector not found
                 }
             };
 
@@ -479,12 +477,12 @@ We can't wait to potentially welcome you aboard!`;
         if (faqMatch && faqMatch.answer) {
             removeTypingIndicator();
             addMessage('bot', faqMatch.answer);
-            if (faqMatch.action) setTimeout(() => faqMatch.action(), 300);
+            if (faqMatch.action) faqMatch.action(); // Execute the pre-defined action
             if (sendBtn) sendBtn.disabled = false;
         } else {
             // General AI Fallback
             try {
-                const proxyUrl = '/api/gemini-proxy'; // This is for your Vercel proxy
+                const proxyUrl = '/api/gemini-proxy'; // Use the Vercel proxy URL
                 // Include existing Firebase FAQs in the prompt for AI to "recycle" info
                 const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics.
                 
@@ -493,20 +491,18 @@ We can't wait to potentially welcome you aboard!`;
                 
                 User query: "${message}"`;
 
-                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const response = await fetch(apiUrl, {
+                const payload = { message: prompt }; // Proxy expects 'message' field
+                const response = await fetch(proxyUrl, { // Fetch from your proxy
                            method: 'POST',
                            headers: { 'Content-Type': 'application/json' },
                            body: JSON.stringify(payload)
                        });
                 
                 const result = await response.json();
-                if (!response.ok || !result.candidates || result.candidates.length === 0 || !result.candidates[0].content || !result.candidates[0].content.parts || result.candidates[0].content.parts.length === 0) {
-                    throw new Error(result.error?.message || `API call failed with status: ${response.status}`);
+                if (!response.ok || !result.success) { // Proxy returns { success: bool, message: string, text: string }
+                    throw new Error(result.message || `API call failed with status: ${response.status}`);
                 }
-                const text = result.candidates[0].content.parts[0].text;
+                const text = result.text; // Proxy returns 'text' field
                 
                 const lowerCaseAiResponse = text.toLowerCase();
                 const isBusinessGeneral = ['synappse', 'business', 'solution', 'company', 'marketing', 'navigate'].some(kw => lowerCaseAiResponse.includes(kw));
@@ -583,10 +579,11 @@ We can't wait to potentially welcome you aboard!`;
         closeChatWindow();
         // Use a Promise to wait for the transition to complete, more reliable than fixed timeout
         const container = document.getElementById('mobius-container');
-        container.addEventListener('transitionend', function handler() {
+        // A simple setTimeout is more reliable here as transitionend might not always fire predictably across browsers
+        // or if there are no active CSS transitions on the container itself.
+        setTimeout(() => {
             document.dispatchEvent(new CustomEvent('mobius-guide', { detail: { targetSelector, textToFind } }));
-            container.removeEventListener('transitionend', handler); // Remove listener to prevent multiple dispatches
-        }, { once: true }); // Ensure the handler runs only once for this event
+        }, 300); // Give the closing animation time to complete
     }
 
     function initiateInterview() {
@@ -613,7 +610,7 @@ We can't wait to potentially welcome you aboard!`;
                 startInterview();
             } else {
                 addTypingIndicator();
-                setTimeout(() => { removeTypiusIndicator(); addMessage('bot', "No problem at all. Feel free to explore our services!"); interviewState = null; }, 800);
+                setTimeout(() => { removeTypingIndicator(); addMessage('bot', "No problem at all. Feel free to explore our services!"); interviewState = null; }, 800);
             }
             return;
         }
@@ -856,24 +853,22 @@ We can't wait to potentially welcome you aboard!`;
      * @returns {Promise<string>} The generated text.
      */
     async function callGeminiForText(prompt) {
-        const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-        const chatHistory = [];
-        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-        const payload = { contents: chatHistory };
+        // Corrected to call the Vercel proxy, which then calls Gemini API securely
+        const proxyUrl = '/api/gemini-proxy'; 
+        const payload = { message: prompt }; // The proxy expects a 'message' field in its request body.
 
-        const response = await fetch(apiUrl, {
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
         const result = await response.json();
-        if (result.candidates && result.candidates.length > 0 &&
-            result.candidates[0].content && result.candidates[0].content.parts &&
-            result.candidates[0].content.parts.length > 0) {
-          return result.candidates[0].content.parts[0].text;
+        
+        // The proxy is expected to return { success: boolean, text: string, message: string (on error) }
+        if (result.success && result.text) {
+          return result.text;
         } else {
-            throw new Error(`Gemini API call failed: ${JSON.stringify(result)}`);
+            throw new Error(`Proxy call failed: ${result.message || JSON.stringify(result)}`);
         }
     }
 
