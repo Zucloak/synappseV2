@@ -11,55 +11,43 @@
  * @param {import('@vercel/node').VercelResponse} res - The Vercel response object.
  */
 export default async function handler(req, res) {
-  // Ensure the request method is POST. This proxy only accepts POST requests.
+  // Ensure the request method is POST.
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed', success: false });
   }
 
-  // Extract the 'message' from the request body.
-  // The client-side Mobius code sends the user's message in this format.
-  const { message } = req.body;
+  // Extract the 'chatHistory' array from the request body.
+  // The client-side Mobius code now sends the entire conversation history in this format.
+  const { chatHistory } = req.body;
 
-  // Basic validation: Check if a message was provided.
-  if (!message) {
-    return res.status(400).json({ message: 'Message content is required.', success: false });
+  // Basic validation: Check if chatHistory was provided.
+  if (!chatHistory || !Array.isArray(chatHistory) || chatHistory.length === 0) {
+    return res.status(400).json({ message: 'Chat history (contents) is required.', success: false });
   }
 
   // Access the Gemini API key from Vercel's environment variables.
-  // This variable must be set in your Vercel project settings.
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-  // Define the Gemini model ID. This can also be passed from the client if dynamic models are needed.
-  const GEMINI_MODEL_ID = "gemini-2.0-flash"; // Using gemini-2.0-flash as per the client-side code
-
-  // Check if the API key is configured. If not, it's a server configuration error.
-  if (!GEMINI_API_KEY) {
-    console.error("Serverless Function Error: GEMINI_API_KEY environment variable is not set on Vercel.");
-    return res.status(500).json({ message: 'Server configuration error: Gemini API Key not found. Please ensure GEMINI_API_KEY is set in Vercel environment variables.', success: false });
-  }
+  // Define the Gemini model ID.
+  const GEMINI_MODEL_ID = 'gemini-2.0-flash'; // Or 'gemini-pro' if preferred
 
   try {
-    // Construct the chat history payload for the Gemini API.
-    // The Gemini API expects an array of content, where each item has a role and parts.
-    const chatHistory = [{ role: "user", parts: [{ text: message }] }];
-    const payload = { contents: chatHistory };
+    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_ID}:generateContent?key=${GEMINI_API_KEY}`;
 
-    // Construct the full API URL for the Gemini API endpoint.
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_ID}:generateContent?key=${GEMINI_API_KEY}`;
-
-    // Make the fetch request to the actual Gemini API.
-    const geminiResponse = await fetch(apiUrl, {
+    const geminiResponse = await fetch(geminiApiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Send the entire chatHistory directly as 'contents' to the Gemini API
+      body: JSON.stringify({ contents: chatHistory }),
     });
 
-    // Parse the JSON response from the Gemini API.
     const geminiResult = await geminiResponse.json();
 
-    // Log the full Gemini API response for debugging purposes if it's not 'ok'.
+    // Check for API errors (e.g., invalid key, rate limits)
     if (!geminiResponse.ok) {
-        console.error("Serverless Function: Gemini API returned a non-OK status. Status:", geminiResponse.status, "Response:", JSON.stringify(geminiResult));
+        console.error("Serverless Function: Error from Gemini API:", JSON.stringify(geminiResult));
         return res.status(geminiResponse.status).json({
             message: "Error from Gemini API.",
             success: false,
