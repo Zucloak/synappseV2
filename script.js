@@ -259,7 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- UPDATED: Centralized functions to control the carousel animation ---
     function pauseServicesAutoScroll() {
         if (servicesScrollAnimation && !servicesScrollAnimation.paused) {
             servicesScrollAnimation.pause();
@@ -397,15 +396,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupPhilosophySection();
 
-    // --- Code Protection Measures ---
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    document.addEventListener('keydown', e => {
-        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C'))) {
-            e.preventDefault();
-        }
-    });
 
-    // --- UPDATED: MOBIUS UNIVERSAL GUIDE EVENT LISTENER ---
+    // --- FIX: MOBIUS UNIVERSAL GUIDE EVENT LISTENER ---
+    // This listener now handles two types of navigation:
+    // 1. For service cards, it performs a custom scroll to center the card horizontally.
+    // 2. For all other elements, it uses the standard scrollIntoView.
     document.addEventListener('mobius-guide', (e) => {
         const { targetSelector, textToFind } = e.detail;
         if (!targetSelector) return;
@@ -413,46 +408,61 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetElement = document.querySelector(targetSelector);
         const overlay = document.getElementById('mobius-overlay');
         if (!targetElement || !overlay) return;
-
-        // --- FIX: Pause carousel when guiding to a service card ---
+        
         const isInServicesCarousel = targetElement.closest('.services-grid');
+
+        // --- SECTION 1: CUSTOM LOGIC FOR SERVICE CAROUSEL ---
         if (isInServicesCarousel) {
-            pauseServicesAutoScroll();
-        }
+            pauseServicesAutoScroll(); // Pause the auto-scroll animation.
+            const servicesGrid = targetElement.parentElement;
+            const servicesSection = document.getElementById('services');
 
-        overlay.classList.add('visible');
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-
-        const scrollAnimationDuration = 700;
-        setTimeout(() => {
-            let originalContent = null;
+            // First, scroll the entire #services section into the middle of the viewport.
+            servicesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
-            if (textToFind && targetElement.textContent.includes(textToFind)) {
-                originalContent = targetElement.innerHTML;
-                const highlightedHTML = targetElement.innerHTML.replace(
-                    new RegExp(textToFind, 'gi'), // Use 'gi' for global, case-insensitive match
-                    `<span class="mobius-text-highlight">${textToFind}</span>`
-                );
-                targetElement.innerHTML = highlightedHTML;
-            } else {
-                targetElement.classList.add('mobius-highlight');
-            }
-
-            // Cleanup logic
+            // After a short delay to allow the vertical scroll to begin,
+            // animate the horizontal scroll of the carousel.
             setTimeout(() => {
-                if (originalContent) {
-                    targetElement.innerHTML = originalContent;
-                } else {
-                    targetElement.classList.remove('mobius-highlight');
-                }
-                overlay.classList.remove('visible');
-                
-                // --- FIX: Resume carousel scroll after highlight ---
-                if (isInServicesCarousel && window.innerWidth > 768) {
-                    resumeServicesAutoScroll();
-                }
-            }, 4000); // Highlight lasts for 4 seconds
+                // Calculate the exact scroll position to center the target card.
+                const targetScrollLeft = targetElement.offsetLeft - (servicesGrid.clientWidth / 2) + (targetElement.offsetWidth / 2);
 
-        }, scrollAnimationDuration);
+                // Use anime.js for a smooth horizontal scroll animation.
+                anime({
+                    targets: servicesGrid,
+                    scrollLeft: targetScrollLeft,
+                    duration: 800, // Animation duration in milliseconds.
+                    easing: 'easeInOutQuad', // Smooth easing function.
+                    complete: () => {
+                        // This code runs after the horizontal scroll is finished.
+                        // Now, apply the highlight effect.
+                        overlay.classList.add('visible');
+                        targetElement.classList.add('mobius-highlight');
+                        
+                        // Hold the highlight for 4 seconds, then remove it.
+                        // The carousel remains paused so the user can observe the card.
+                        setTimeout(() => {
+                            targetElement.classList.remove('mobius-highlight');
+                            overlay.classList.remove('visible');
+                        }, 4000);
+                    }
+                });
+            }, 600); // 600ms delay helps prevent animation conflicts.
+
+        } else {
+            // --- SECTION 2: ORIGINAL LOGIC FOR ALL OTHER ELEMENTS ---
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            
+            // Wait for the scroll to finish, then apply the highlight.
+            setTimeout(() => {
+                overlay.classList.add('visible');
+                targetElement.classList.add('mobius-highlight');
+
+                // Cleanup logic to remove the highlight after 4 seconds.
+                setTimeout(() => {
+                    targetElement.classList.remove('mobius-highlight');
+                    overlay.classList.remove('visible');
+                }, 4000);
+            }, 700);
+        }
     });
 });

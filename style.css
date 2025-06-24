@@ -22,6 +22,9 @@ html {
     scroll-behavior: smooth;
     -ms-overflow-style: none;
     scrollbar-width: none;
+    /* FIX: Changed 'overflow: hidden;' to 'overflow-x: hidden;'
+            This allows vertical scrolling on the main page while preventing unwanted horizontal scroll. */
+    overflow-x: hidden; 
 }
 html::-webkit-scrollbar {
     display: none;
@@ -32,6 +35,8 @@ body {
     color: var(--text-dark);
     background-color: var(--bg-light);
     line-height: 1.6;
+    /* Keep overflow-x: hidden for body if specific elements still cause horizontal scroll issues,
+       but primarily control main document scroll with html overflow properties. */
     overflow-x: hidden;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -89,7 +94,7 @@ section {
     justify-content: center;
     align-items: center;
     position: relative;
-    overflow: hidden;
+    overflow: hidden; /* This overflow applies only to the section itself, not the main document */
 }
 
 .container {
