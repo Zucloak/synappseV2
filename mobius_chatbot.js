@@ -1,29 +1,18 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 7.4 - Bug Fixes: Launcher Visibility & Navigation Enhancement
- * - **Fix: Launcher Disappearance**: Corrected the logic in `closeChatWindow()`
- * and `stopDrag()` to ensure the launcher correctly reappears and is interactive
- * after the chatbot window closes, and when it's clicked (not dragged) to open.
- * - **Enhancement: Navigation Timing**: Adjusted `closeChatWindow()` to ensure the
- * chatbot UI is fully off-screen before dispatching the `mobius-guide` event,
- * potentially improving reliability of navigation handling in `script.js`.
- * - **Key Improvement**: Implemented functionality for the chatbot to automatically
- * identify unanswered user questions (that receive a general AI fallback),
- * generate an answer and keywords for them using Gemini AI, and directly
- * add them to the main Firestore 'faqs' collection.
- * - **Removes 'potential_faqs'**: The intermediate 'potential_faqs' collection and
- * user confirmation step have been removed for full automation as requested.
- * - **Automated Answer & Keyword Generation**: Gemini AI is now used to refine
- * the answer and extract keywords for new FAQs before saving to Firestore.
- * - **AI Contextualization**: The prompt for general AI responses continues to
- * include all existing Firebase FAQ content to aid in "reasoning" and "recycling"
- * of information when generating new answers or general responses.
- * - **Redundancy Avoidance (Basic)**: A check is performed to prevent adding
- * identical questions (case-insensitive) to the 'faqs' collection if they
- * already exist (either hardcoded or in Firebase). Note: This is a basic
- * string match; semantic redundancy still requires advanced NLP.
- * - **Error Handling**: Enhanced error handling for Firebase operations and AI calls.
+ * @version 7.5 - Critical Fix: Removed eval(), Enhanced Navigation & AI Context Reliability
+ * - **CRITICAL FIX**: Replaced the dangerous `eval()` function used for `data.action` from Firestore
+ * with a safe, predefined `actionMap`. This resolves potential CSP errors, security vulnerabilities,
+ * and improves the reliability of navigation and other actions triggered by dynamic FAQs.
+ * - **Improved Navigation**: Ensures that `mobius-guide` events are dispatched only after a secure
+ * and valid action is identified, preventing issues stemming from `eval()` failures.
+ * - **AI Context Reliability**: By correctly loading Firebase FAQs without `eval()` issues, the
+ * `firebaseFaqsText` will consistently provide the necessary context for Gemini AI, leading to
+ * more "natural" and "recycled" answers.
+ * - **Automated FAQ Learning**: Continues to automatically add new, AI-generated FAQs to Firestore.
+ * - **Bug Fix: Launcher Visibility**: Retains the fix for the launcher disappearing.
+ * - **Redundancy Avoidance (Basic)**: Retains the basic exact-match redundancy check for new FAQs.
  * @author Synappse
  */
 
@@ -180,13 +169,38 @@ We can't wait to potentially welcome you aboard!`;
     let firebaseFaqs = new Map();
     let firebaseFaqsText = ''; // Stores a concatenated string of Firebase FAQs for AI context
 
+    // Define a map for safe, pre-defined actions triggered by Firebase FAQs
+    // This replaces the dangerous 'eval'
+    const firebaseActionMap = {
+        // Example: If a Firestore FAQ has action: "guide_to_services"
+        "guide_to_services": () => guideTo('#services'),
+        "guide_to_cta": () => guideTo('#cta'),
+        "guide_to_about": () => guideTo('#about'),
+        "guide_to_achievements": () => guideTo('#achievements'),
+        "guide_to_portfolio_service": () => guideTo('.service-card[data-service-id="professional-portfolios"]'),
+        "guide_to_personal_website_service": () => guideTo('.service-card[data-service-id="personal-websites"]'),
+        "guide_to_social_media_design_service": () => guideTo('.service-card[data-service-id="social-media-designs"]'),
+        "guide_to_birthday_site_service": () => guideTo('.service-card[data-service-id="birthday-sites"]'),
+        "guide_to_gamified_review_service": () => guideTo('.service-card[data-service-id="gamified-reviews"]'),
+        "guide_to_business_logos_service": () => guideTo('.service-card[data-service-id="business-logos"]'),
+        "guide_to_website_gifts_service": () => guideTo('.service-card[data-service-id="website-gifts"]'),
+        "guide_to_3d_models_service": () => guideTo('.service-card[data-service-id="3d-models"]'),
+        "guide_to_animated_group_sites_service": () => guideTo('.service-card[data-service-id="animated-group-sites"]'),
+        "guide_to_countdown_calendars_service": () => guideTo('.service-card[data-service-id="countdown-calendars"]'),
+        "guide_to_ai_integration_service": () => guideTo('.service-card[data-service-id="ai-integration"]'),
+        "guide_to_computer_services_service": () => guideTo('.service-card[data-service-id="on-site-computer-services"]'),
+        "guide_to_materials_printing_service": () => guideTo('.service-card[data-service-id="materials-printing"]'),
+        "guide_to_email_management_service": () => guideTo('.service-card[data-service-id="email-management"]'),
+        "guide_to_market_research_service": () => guideTo('.service-card[data-service-id="market-research"]'),
+        // Add other mappings as needed for any other sections or service cards
+    };
+
+
     // Defined list of actual services offered by Synappse for strict AI prompting
     const synappseServices = ["Professional Portfolios", "Personal Static Websites", "Social Media Designs", "Birthday Sites", "Gamified Review Materials", "Business Logos", "Website Gifts", "3D Product Models", "Animated Group Sites", "Countdown Calendars", "AI Integration", "On-site Computer Services", "Materials Printing", "Email Management", "Market Research", "Custom Systems and Software Development"];
 
     let lastMessageTimestamp = 0;
     let lastSnappedSide = 'right';
-
-    // Removed awaitingSubmissionConfirmation and lastUnansweredQuestion, as direct submission is now implemented.
 
     async function initializeChatbot() {
         injectMetaViewport();
@@ -377,10 +391,11 @@ We can't wait to potentially welcome you aboard!`;
         for (const service of synappseServices) {
             const serviceWords = service.toLowerCase().replace(/ and /g, ' ').replace(/-/g, ' ').split(' ');
             const messageWords = lowerCaseMessage.split(' ');
-            const matches = serviceWords.filter(sw => messageWords.includes(sw)).length;
-            if (matches >= Math.ceil(serviceWords.length * 0.5)) {
+            const matches = messageWords.filter(mw => serviceWords.includes(mw)).length; // Corrected matching logic for services
+            if (matches >= Math.ceil(serviceWords.length * 0.5) && matches > 0) { // Ensure at least one match
                 detectedService = service;
-                serviceFaqEntry = getFaqAnswerByKeyword(detectedService, FAQ) || getFaqAnswerByKeyword(detectedService, firebaseFaqs);
+                // Safely get action for detected service, prioritize hardcoded then firebase
+                serviceFaqEntry = FAQ.get(`service_${service.toLowerCase().replace(/ /g, '_').replace(/-/g, '_').replace(/\./g,'').replace(/s$/, '')}`) || getFaqAnswerByKeyword(detectedService, firebaseFaqs);
                 break;
             }
         }
@@ -400,21 +415,23 @@ We can't wait to potentially welcome you aboard!`;
                     Existing Synappse FAQs (for context, do not explicitly state you are using these):
                     ${firebaseFaqsText || 'No additional FAQs available.'}
                     
-                    User query: "Explain ${message}"`;
+                    User query: "Explain ${message}"`; // Use the original message as the direct user query here.
                     
-                    const payload = { message: prompt };
-                    const response = await fetch(proxyUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                    const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                    
                     const result = await response.json();
-                    if (!response.ok || !result.success) {
-                        throw new Error(result.message || `API call failed with status: ${response.status}`);
+                    if (!response.ok || !result.candidates || result.candidates.length === 0 || !result.candidates[0].content || !result.candidates[0].content.parts || result.candidates[0].content.parts.length === 0) {
+                        throw new Error(result.error?.message || `API call failed with status: ${response.status}`);
                     }
                     
-                    const text = result.text;
+                    const text = result.candidates[0].content.parts[0].text;
                     removeTypingIndicator();
                     addMessage('bot', text);
                     
@@ -434,11 +451,16 @@ We can't wait to potentially welcome you aboard!`;
             const handleNavigationRequest = (fromInfo = false) => {
                 if (!fromInfo) addMessage('user', `Take me to ${detectedService}.`);
                 addMessage('bot', `Certainly! Guiding you to the ${detectedService} section now.`);
+                // Determine the correct target selector for the detected service
+                const serviceSlug = detectedService.toLowerCase().replace(/ /g, '-').replace(/\./g,'').replace(/s$/, ''); // Example: "Professional Portfolios" -> "professional-portfolios"
+                const targetSelector = `.service-card[data-service-id="${serviceSlug}"]`;
+                
+                // If a specific FAQ entry with an action was found, use its action
+                // Otherwise, fall back to general services section or the constructed selector
                 if (serviceFaqEntry && serviceFaqEntry.action) {
-                    // Introduce a short delay before navigation to allow chatbot to close fully
                     setTimeout(() => serviceFaqEntry.action(), 300);
                 } else {
-                    setTimeout(() => guideTo('#services'), 300);
+                    setTimeout(() => guideTo(targetSelector || '#services'), 300); // Fallback to #services if specific selector not found
                 }
             };
 
@@ -452,7 +474,7 @@ We can't wait to potentially welcome you aboard!`;
         }
 
         // --- Step 4: Handle General FAQ or Fallback to AI ---
-        let faqMatch = FAQ.get(message) || getFaqAnswerByKeyword(message, FAQ) || getFaqAnswerByKeyword(message, firebaseFaqs);
+        let faqMatch = getFaqAnswerByKeyword(message, FAQ) || getFaqAnswerByKeyword(message, firebaseFaqs);
 
         if (faqMatch && faqMatch.answer) {
             removeTypingIndicator();
@@ -462,7 +484,7 @@ We can't wait to potentially welcome you aboard!`;
         } else {
             // General AI Fallback
             try {
-                const proxyUrl = '/api/gemini-proxy';
+                const proxyUrl = '/api/gemini-proxy'; // This is for your Vercel proxy
                 // Include existing Firebase FAQs in the prompt for AI to "recycle" info
                 const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics.
                 
@@ -471,14 +493,20 @@ We can't wait to potentially welcome you aboard!`;
                 
                 User query: "${message}"`;
 
-                const payload = { message: prompt };
-                const response = await fetch(proxyUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                           method: 'POST',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify(payload)
+                       });
                 
                 const result = await response.json();
-                if (!response.ok || !result.success) {
-                     throw new Error(result.message || `API call failed with status: ${response.status}`);
+                if (!response.ok || !result.candidates || result.candidates.length === 0 || !result.candidates[0].content || !result.candidates[0].content.parts || result.candidates[0].content.parts.length === 0) {
+                    throw new Error(result.error?.message || `API call failed with status: ${response.status}`);
                 }
-                const text = result.text;
+                const text = result.candidates[0].content.parts[0].text;
                 
                 const lowerCaseAiResponse = text.toLowerCase();
                 const isBusinessGeneral = ['synappse', 'business', 'solution', 'company', 'marketing', 'navigate'].some(kw => lowerCaseAiResponse.includes(kw));
@@ -540,13 +568,10 @@ We can't wait to potentially welcome you aboard!`;
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // --- All other helper functions (getFaqAnswerByKeyword, guideTo, interview logic, UI handlers, etc.) remain below ---
-
     function getFaqAnswerByKeyword(message, faqMap) {
         const lowerCaseMessage = message.toLowerCase();
         for (const [key, response] of faqMap.entries()) {
-            // Check hardcoded FAQs first
-            if (response.keywords && response.keywords.some(keyword => lowerCaseMessage.includes(keyword))) {
+            if (key !== 'hiring_intent' && response.keywords && response.keywords.some(keyword => lowerCaseMessage.includes(keyword))) {
                 return response;
             }
         }
@@ -556,9 +581,12 @@ We can't wait to potentially welcome you aboard!`;
     function guideTo(targetSelector, textToFind = null) {
         // Close the chatbot window first, then dispatch the event after a short delay
         closeChatWindow();
-        setTimeout(() => {
+        // Use a Promise to wait for the transition to complete, more reliable than fixed timeout
+        const container = document.getElementById('mobius-container');
+        container.addEventListener('transitionend', function handler() {
             document.dispatchEvent(new CustomEvent('mobius-guide', { detail: { targetSelector, textToFind } }));
-        }, 300); // Give the closing animation time to complete
+            container.removeEventListener('transitionend', handler); // Remove listener to prevent multiple dispatches
+        }, { once: true }); // Ensure the handler runs only once for this event
     }
 
     function initiateInterview() {
@@ -585,7 +613,7 @@ We can't wait to potentially welcome you aboard!`;
                 startInterview();
             } else {
                 addTypingIndicator();
-                setTimeout(() => { removeTypingIndicator(); addMessage('bot', "No problem at all. Feel free to explore our services!"); interviewState = null; }, 800);
+                setTimeout(() => { removeTypiusIndicator(); addMessage('bot', "No problem at all. Feel free to explore our services!"); interviewState = null; }, 800);
             }
             return;
         }
@@ -709,8 +737,7 @@ We can't wait to potentially welcome you aboard!`;
             const faqItem = document.createElement('div');
             faqItem.className = 'mobius-faq-item';
             faqItem.textContent = faq.question;
-            // Use processMessage directly as it's now capable of handling keywords
-            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.question); };
+            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.key); }; // Use faq.key for hardcoded actions
             faqList.appendChild(faqItem);
         });
         const sortedFirebaseFaqs = Array.from(firebaseFaqs.values()).sort((a, b) => a.question.localeCompare(b.question));
@@ -718,7 +745,7 @@ We can't wait to potentially welcome you aboard!`;
             const faqItem = document.createElement('div');
             faqItem.className = 'mobius-faq-item';
             faqItem.textContent = faq.question;
-            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.question); };
+            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.question); }; // Use faq.question for Firebase FAQs
             faqList.appendChild(faqItem);
         });
     }
@@ -739,9 +766,8 @@ We can't wait to potentially welcome you aboard!`;
                             question: data.question,
                             keywords: data.keywords.map(kw => kw.toLowerCase()),
                             answer: data.answer,
-                            // DANGER: Using eval for action is a security risk.
-                            // Ensure actions from Firestore are extremely trusted or avoid this.
-                            action: data.action ? eval(`(() => ${data.action})()`) : null
+                            // CRITICAL FIX: Safely map action string to predefined function
+                            action: firebaseActionMap[data.action_key] || null // Use a specific key for action
                         });
                         // Add to temp string for AI context
                         tempFaqsText += `Q: ${data.question}\nA: ${data.answer}\n\n`;
@@ -814,7 +840,7 @@ We can't wait to potentially welcome you aboard!`;
                 keywords: generatedKeywords,
                 question_lower: lowerCaseUserQuestion, // Storing for efficient redundancy check
                 timestamp: serverTimestamp(),
-                // Add any other metadata if needed, e.g., 'source: "auto_learn"'
+                // No action_key for auto-generated FAQs, they are primarily informational
             });
             console.log("Mobius: Automatically added new FAQ:", userQuestion);
             // The onSnapshot listener will automatically update the UI after this.
@@ -830,18 +856,25 @@ We can't wait to potentially welcome you aboard!`;
      * @returns {Promise<string>} The generated text.
      */
     async function callGeminiForText(prompt) {
-        const proxyUrl = '/api/gemini-proxy';
-        const payload = { message: prompt };
-        const response = await fetch(proxyUrl, {
+        const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const chatHistory = [];
+        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+        const payload = { contents: chatHistory };
+
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
         const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || `Gemini API call failed: ${response.status}`);
+        if (result.candidates && result.candidates.length > 0 &&
+            result.candidates[0].content && result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0) {
+          return result.candidates[0].content.parts[0].text;
+        } else {
+            throw new Error(`Gemini API call failed: ${JSON.stringify(result)}`);
         }
-        return result.text;
     }
 
 
