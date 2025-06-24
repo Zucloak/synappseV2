@@ -1,25 +1,29 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 7.2 - Dynamic FAQ Submission & AI Contextualization
- * - **Key Improvement**: Implemented functionality to allow users to submit unanswered questions for review,
- * which are then stored in a Firestore collection (`potential_faqs`).
- * - **Firebase Integration**: Utilizes Firestore to store user-submitted questions, enabling administrators
- * to review and add them as official FAQs.
- * - **AI Contextualization**: Modified the AI prompt to include existing Firebase FAQ content,
- * allowing Gemini to potentially "recycle" information from the dynamic FAQ list when generating responses.
- * (Note: This approach can impact token usage; more advanced RAG would be needed for large datasets).
- * - **Security/Privacy**: User consent for submitting questions is now explicitly handled.
- * Acknowledges the user's existing privacy policy regarding data collection.
- * - **Redundancy Avoidance (Basic)**: Includes a simple check to avoid submitting duplicate questions
- * to the `potential_faqs` collection if an identical question has been asked recently.
- * - **Error Handling**: Enhanced error handling for Firebase operations.
+ * @version 7.3 - Fully Automated FAQ Learning (Direct Firestore Write)
+ * - **Key Improvement**: Implemented functionality for the chatbot to automatically
+ * identify unanswered user questions (that receive a general AI fallback),
+ * generate an answer and keywords for them using Gemini AI, and directly
+ * add them to the main Firestore 'faqs' collection.
+ * - **Removes 'potential_faqs'**: The intermediate 'potential_faqs' collection and
+ * user confirmation step have been removed for full automation as requested.
+ * - **Automated Answer & Keyword Generation**: Gemini AI is now used to refine
+ * the answer and extract keywords for new FAQs before saving to Firestore.
+ * - **AI Contextualization**: The prompt for general AI responses continues to
+ * include all existing Firebase FAQ content to aid in "reasoning" and "recycling"
+ * of information when generating new answers or general responses.
+ * - **Redundancy Avoidance (Basic)**: A check is performed to prevent adding
+ * identical questions (case-insensitive) to the 'faqs' collection if they
+ * already exist (either hardcoded or in Firebase). Note: This is a basic
+ * string match; semantic redundancy still requires advanced NLP.
+ * - **Error Handling**: Enhanced error handling for Firebase operations and AI calls.
  * @author Synappse
  */
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-// Added addDoc and serverTimestamp for writing to Firestore
+// Added addDoc and serverTimestamp for writing to Firestore, and getDocs/where for redundancy checks
 import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
@@ -176,9 +180,7 @@ We can't wait to potentially welcome you aboard!`;
     let lastMessageTimestamp = 0;
     let lastSnappedSide = 'right';
 
-    // Variable to track if the current message is a follow-up to a submission offer
-    let awaitingSubmissionConfirmation = false;
-    let lastUnansweredQuestion = '';
+    // Removed awaitingSubmissionConfirmation and lastUnansweredQuestion, as direct submission is now implemented.
 
     async function initializeChatbot() {
         injectMetaViewport();
@@ -220,7 +222,7 @@ We can't wait to potentially welcome you aboard!`;
             :root {
                 --mobius-primary: #6A0DAD;
                 --mobius-secondary: #0a0a0a;
-                --mobius-accent: #e3c41b;
+                --mobius-accent: #FFD700;
                 --mobius-text: #f0f0f0;
                 --mobius-user-bg: #333;
             }
@@ -342,24 +344,7 @@ We can't wait to potentially welcome you aboard!`;
 
         const lowerCaseMessage = typeof message === 'string' ? message.toLowerCase() : '';
 
-        // Handle confirmation for submitting an unanswered question
-        if (awaitingSubmissionConfirmation) {
-            awaitingSubmissionConfirmation = false; // Reset flag
-            if (lowerCaseMessage.includes('yes')) {
-                addMessage('user', 'Yes.'); // Acknowledge user's yes
-                addTypingIndicator();
-                await addQuestionForReview(lastUnansweredQuestion);
-                removeTypingIndicator();
-                addMessage('bot', "Thank you! Your question has been noted and will be reviewed to improve Mobius's knowledge. What else can I help you with?");
-            } else {
-                addMessage('user', 'No.'); // Acknowledge user's no
-                addTypingIndicator();
-                removeTypingIndicator();
-                addMessage('bot', "No problem! What else can I help you with today?");
-            }
-            if (sendBtn) sendBtn.disabled = false;
-            return;
-        }
+        // Removed awaitingSubmissionConfirmation logic, as it's now fully automated
 
         // --- Intent Detection & State Handling ---
         const hiringIntentKeywords = FAQ.get('hiring_intent').keywords;
@@ -495,25 +480,17 @@ We can't wait to potentially welcome you aboard!`;
                 removeTypingIndicator();
                 if ((isBusinessGeneral || synappseServices.some(s => lowerCaseAiResponse.includes(s.toLowerCase()))) && !hasNegativeKeyword) {
                     addMessage('bot', text);
-                    // Offer to save the question if AI's general answer still didn't seem to perfectly match a specific FAQ
-                    // Avoid offering for very short or simple acknowledgment responses.
+                    // Automatically add this as a new FAQ if it's a new, relevant question
+                    // Only add if it's a substantive answer (length > 20 chars) and not an existing match
                     if (text.length > 20 && !faqMatch && !detectedService && !interviewState) {
-                        lastUnansweredQuestion = message; // Store the original user question
-                        awaitingSubmissionConfirmation = true; // Set flag
-                        addMessage('bot', "I'm still learning! Would you like to submit this question for review so we can improve Mobius's knowledge base?", [
-                            { text: 'Yes', handler: () => handleSendMessage('yes') },
-                            { text: 'No', handler: () => handleSendMessage('no') }
-                        ]);
+                        await addAutoFaq(message, text);
                     }
                 } else {
                     addMessage('bot', "I'm Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
-                    // If AI gives a fallback response, offer to save the question
-                    lastUnansweredQuestion = message; // Store the original user question
-                    awaitingSubmissionConfirmation = true; // Set flag
-                    addMessage('bot', "I'm still learning! Would you like to submit this question for review so we can improve Mobius's knowledge base?", [
-                        { text: 'Yes', handler: () => handleSendMessage('yes') },
-                        { text: 'No', handler: () => handleSendMessage('no') }
-                    ]);
+                    // Also try to learn from these interactions if the AI cannot directly answer
+                    if (message.length > 20 && !faqMatch && !detectedService && !interviewState) {
+                        await addAutoFaq(message, "I am Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
+                    }
                 }
             } catch (error) {
                 removeTypingIndicator();
@@ -560,7 +537,8 @@ We can't wait to potentially welcome you aboard!`;
     function getFaqAnswerByKeyword(message, faqMap) {
         const lowerCaseMessage = message.toLowerCase();
         for (const [key, response] of faqMap.entries()) {
-            if (key !== 'hiring_intent' && response.keywords && response.keywords.some(keyword => lowerCaseMessage.includes(keyword))) {
+            // Check hardcoded FAQs first
+            if (response.keywords && response.keywords.some(keyword => lowerCaseMessage.includes(keyword))) {
                 return response;
             }
         }
@@ -653,9 +631,9 @@ We can't wait to potentially welcome you aboard!`;
         document.getElementById('mobius-messages').style.display = 'flex';
         document.getElementById('mobius-input-area').style.display = 'flex';
         launcher.style.opacity = '1';
-        launcher.style.visibility = 'visible';
-        launcher.style.pointerEvents = 'auto';
-        launcher.style.transform = 'scale(1)';
+        launcher.style.visibility = 'hidden'; // Ensure visibility is hidden too
+        launcher.style.pointerEvents = 'none';
+        launcher.style.transform = 'scale(0)';
         void launcher.offsetWidth;
         snapElementToNearestEdge(launcher, lastSnappedSide);
     }
@@ -668,12 +646,25 @@ We can't wait to potentially welcome you aboard!`;
         const faqBtn = document.getElementById('mobius-faq-btn');
         const backBtn = document.getElementById('mobius-back-btn');
         if (closeBtn) closeBtn.addEventListener('click', closeChatWindow);
-        // Modified handleSendMessage to potentially accept a predefined message from button clicks
-        if (sendBtn) sendBtn.addEventListener('click', () => handleSendMessage());
+        // Modified handleSendMessage to no longer accept predefined messages directly from button clicks outside the normal flow.
+        if (sendBtn) sendBtn.addEventListener('click', handleSendMessage);
         if (input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendMessage(); });
         if (faqBtn) faqBtn.addEventListener('click', showFaqOverlay);
         if (backBtn) backBtn.addEventListener('click', hideFaqOverlay);
         if (launcher) makeLauncherDraggable(launcher);
+
+        // Add event listener for the launcher click to open the chatbot
+        if (launcher) {
+            launcher.addEventListener('click', () => {
+                if (!launcher.classList.contains('snapped')) { // Only open if not currently being dragged or snapped.
+                    document.getElementById('mobius-container').classList.add('open');
+                    launcher.style.opacity = '0';
+                    launcher.style.visibility = 'hidden';
+                    launcher.style.pointerEvents = 'none';
+                    launcher.style.transform = 'scale(0)';
+                }
+            });
+        }
     }
 
     function showFaqOverlay() {
@@ -703,7 +694,8 @@ We can't wait to potentially welcome you aboard!`;
             const faqItem = document.createElement('div');
             faqItem.className = 'mobius-faq-item';
             faqItem.textContent = faq.question;
-            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.key); };
+            // Use processMessage directly as it's now capable of handling keywords
+            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.question); };
             faqList.appendChild(faqItem);
         });
         const sortedFirebaseFaqs = Array.from(firebaseFaqs.values()).sort((a, b) => a.question.localeCompare(b.question));
@@ -757,39 +749,84 @@ We can't wait to potentially welcome you aboard!`;
     }
 
     /**
-     * Attempts to add a user's unanswered question to a Firestore collection for review.
-     * Includes a basic check to prevent recent duplicates.
-     * @param {string} questionText The question asked by the user.
+     * Automatically adds a new FAQ to the 'faqs' Firestore collection based on user input
+     * and a generated AI response, if it's not already a known FAQ.
+     * It also generates keywords for the new FAQ.
+     * @param {string} userQuestion The question asked by the user.
+     * @param {string} botResponse The AI's generated response to the user's question.
      */
-    async function addQuestionForReview(questionText) {
-        const potentialFaqsCollection = collection(db, "potential_faqs");
-        const lowerCaseQuestion = questionText.toLowerCase();
+    async function addAutoFaq(userQuestion, botResponse) {
+        const faqsCollection = collection(db, "faqs");
+        const lowerCaseUserQuestion = userQuestion.toLowerCase();
 
         try {
-            // Basic check for recent duplicates to avoid redundancy
-            // This is a simple string match. For semantic redundancy, advanced NLP/vector search is needed.
-            const q = query(potentialFaqsCollection, 
-                            where("question_lower", "==", lowerCaseQuestion)); // Using a lowercased field for exact match query
-            const querySnapshot = await getDocs(q);
+            // --- Redundancy Check (Basic: Exact Question String) ---
+            // Check against hardcoded FAQs
+            const hardcodedFaqMatch = Array.from(FAQ.values()).some(faq => 
+                faq.keywords && faq.keywords.some(kw => lowerCaseUserQuestion.includes(kw))
+            );
 
-            if (!querySnapshot.empty) {
-                console.log("Mobius: Question already submitted recently.");
-                addMessage('bot', "This question seems similar to one already submitted recently. We're on it!");
-                return;
+            // Check against existing Firebase FAQs using question_lower field
+            const firebaseFaqQuery = query(faqsCollection, where("question_lower", "==", lowerCaseUserQuestion));
+            const firebaseQuerySnapshot = await getDocs(firebaseFaqQuery);
+
+            if (hardcodedFaqMatch || !firebaseQuerySnapshot.empty) {
+                console.log("Mobius: Question (or similar) already exists, skipping automatic FAQ creation.");
+                return; // Do not add if already exists
             }
 
-            // If not a recent duplicate, add the question for review
-            await addDoc(potentialFaqsCollection, {
-                question: questionText,
-                question_lower: lowerCaseQuestion, // Store a lowercased version for querying
+            // --- Generate Refined Answer for FAQ ---
+            // Ask Gemini to refine the botResponse into a concise FAQ answer.
+            const refinedAnswerPrompt = `Refine the following answer into a concise, factual, and direct FAQ answer (1-3 sentences). Ensure it's clear and directly addresses the question.
+            Original Question: "${userQuestion}"
+            Original Answer: "${botResponse}"
+            Refined FAQ Answer:`;
+            const refinedAnswer = await callGeminiForText(refinedAnswerPrompt);
+
+            // --- Generate Keywords for FAQ ---
+            // Ask Gemini to extract relevant keywords for the FAQ.
+            const keywordsPrompt = `Extract 3-5 concise, relevant keywords (single words or short phrases, comma-separated) from the following question and answer that someone might use to search for this FAQ. Provide only the keywords.
+            Question: "${userQuestion}"
+            Answer: "${refinedAnswer}"
+            Keywords:`;
+            const keywordsText = await callGeminiForText(keywordsPrompt);
+            const generatedKeywords = keywordsText.split(',').map(kw => kw.trim().toLowerCase()).filter(kw => kw.length > 0);
+
+            // --- Add to Firestore 'faqs' Collection ---
+            await addDoc(faqsCollection, {
+                question: userQuestion,
+                answer: refinedAnswer,
+                keywords: generatedKeywords,
+                question_lower: lowerCaseUserQuestion, // Storing for efficient redundancy check
                 timestamp: serverTimestamp(),
-                status: 'pending_review' // Status for admin
+                // Add any other metadata if needed, e.g., 'source: "auto_learn"'
             });
-            console.log("Mobius: Question submitted for review:", questionText);
+            console.log("Mobius: Automatically added new FAQ:", userQuestion);
+            // The onSnapshot listener will automatically update the UI after this.
         } catch (e) {
-            console.error("Mobius: Error adding question for review:", e);
-            addMessage('bot', "Oops! There was an error submitting your question for review. Please try again later.");
+            console.error("Mobius: Error during automatic FAQ creation:", e);
+            // Do not send message to user for backend errors here to avoid spam/confusion
         }
+    }
+
+    /**
+     * Helper function to call the Gemini proxy for text generation.
+     * @param {string} prompt The prompt to send to Gemini.
+     * @returns {Promise<string>} The generated text.
+     */
+    async function callGeminiForText(prompt) {
+        const proxyUrl = '/api/gemini-proxy';
+        const payload = { message: prompt };
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || `Gemini API call failed: ${response.status}`);
+        }
+        return result.text;
     }
 
 
