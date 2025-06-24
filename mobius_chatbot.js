@@ -1,27 +1,17 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 7.7 - Enhanced Conversation Memory & Contextual AI Responses
- * - **Key Improvement**: Implemented a `chatHistory` array to store previous user and bot messages.
- * This history is now sent with every AI API call, allowing Gemini to maintain conversation context.
- * - **More Natural Dialogue**: Addresses the issue of Mobius not remembering previous turns,
- * leading to more coherent and natural responses, especially for follow-up questions like "tell me more".
- * - **Proxy Integration for History**: Updated `callGeminiForText` to send the `chatHistory`
- * through the Vercel proxy.
- * - **IMPORTANT ACTION REQUIRED**: The `gemini-proxy.js` file on your Vercel server MUST
- * also be updated to accept and forward this `chatHistory` to the Gemini API. The necessary
- * proxy code update will be provided separately.
- * - **Removes Redundant Question Repetition**: By providing context, the AI should be less likely
- * to repeat questions or ask for unnecessary clarification if the information is in the history.
- * - **Retains Previous Fixes**: All prior bug fixes (launcher visibility, safe actions) and
- * automated FAQ learning are retained.
+ * @version 7.1 - Vercel Proxy Integration
+ * - **Key Improvement**: Rerouted all Gemini API calls through a Vercel serverless function (`/api/gemini-proxy`).
+ * - **Security**: Removed the client-side `GEMINI_API_KEY`. The API key is now securely stored as an environment variable on Vercel, protecting it from browser exposure.
+ * - **Optimization**: Aligned client-side `fetch` requests with the expected payload and response structure of the new proxy function.
+ * - **Follow-up Action**: Maintained the seamless user journey where Mobius offers to navigate after providing information.
  * @author Synappse
  */
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-// Added addDoc and serverTimestamp for writing to Firestore, and getDocs/where for redundancy checks
-import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
 
@@ -40,22 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const analytics = getAnalytics(app); // Analytics initialized, though not actively used for this feature.
+    const analytics = getAnalytics(app);
 
     // Cooldown period in milliseconds to prevent API spam
     const COOLDOWN_PERIOD = 3000; // 3 seconds
-
-    // --- Conversation History ---
-    // Stores messages in the format expected by the Gemini API: [{ role: "user", parts: [{ text: "..." }] }, { role: "model", parts: [{ text: "..." }] }]
-    // Initialize with a system instruction or initial bot message to set the AI's persona and guidelines.
-    let chatHistory = [{
-        role: "user",
-        parts: [{ text: "You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: Professional Portfolios, Personal Static Websites, Social Media Designs, Birthday Sites, Gamified Review Materials, Business Logos, Website Gifts, 3D Product Models, Animated Group Sites, Countdown Calendars, AI Integration, On-site Computer Services, Materials Printing, Email Management, Market Research, Custom Systems and Software Development. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics. Always identify as Synappse Official AI. Keep responses concise and focused on Synappse." }]
-    }, {
-        role: "model",
-        parts: [{ text: "Hello! I'm Mobius. How can I help you explore our digital craft today?" }]
-    }];
-
 
     // --- Dynamic Interview State Management ---
     let interviewState = null; // Can be null, 'pending_confirmation', or 'active'
@@ -117,11 +95,10 @@ Please send an email to **synpps@gmail.com** with the subject line 'Aspiring Syn
 We can't wait to potentially welcome you aboard!`;
 
     // --- Fully Interactive FAQ Map with unique keys ---
-    // This map stores hardcoded FAQs. Firestore FAQs are managed separately in firebaseFaqs.
     const FAQ = new Map([
         ['hiring_intent', {
             keywords: ['hire', 'hired', 'join', 'job', 'work for', 'career', 'recruiting', 'recruitment', 'interview', 'apply', 'applying', 'employment', 'position', 'opportunity'],
-            answer: null, // Answer is handled by initiateInterview logic
+            answer: null, 
             action: () => initiateInterview()
         }],
         ['price_intent', {
@@ -174,41 +151,13 @@ We can't wait to potentially welcome you aboard!`;
             answer: "Yes, Synappse offers cutting-edge custom system and software development. We architect bespoke solutions tailored precisely to your business needs, optimizing workflows and driving innovation. From concept to deployment, we ensure your software empowers your growth. Please use the 'Get in Touch Now!' button for a detailed consultation to discuss how we can build your next big thing!"
         }],
         ['about_mobius', {
-            keywords: ['about you', 'who are you', 'who is it', 'what are you', 'your name', 'who is mobius', 'are you mobius', 'what is mobius', 'tell me about yourself', 'your identity', 'are you google', 'trained by google', 'by google', 'who created you', 'who developed you', 'your origin', 'so you are', 'who you are', 'your creator', 'who is your creator', 'your background', 'what about you', 'are you an ai', 'are you a bot', 'are you a chatbot', 'are you an artificial intelligence', 'what kind of ai are you', 'who developed this'],
+            keywords: ['about you', 'who are you', 'who is it', 'what are you', 'your name', 'who is mobius', 'are you mobius', 'what is mobius', 'tell me about yourself', 'your identity', 'are you google', 'trained by google', 'by google', 'who created you', 'who developed you', 'your origin', 'so you are', 'who makes you', 'who are you?', 'what are you?', 'tell me who you are', 'your identity?', 'who made you', 'who built you', 'what is your purpose', 'what is your function', 'you are', 'you are>', 'who you are', 'your creator', 'who is your creator', 'your background', 'what about you', 'are you an ai', 'are you a bot', 'are you a chatbot', 'are you an artificial intelligence', 'what kind of ai are you', 'who developed this'],
             answer: "I am Mobius, the Synappse Official AI. I'm here to guide you through our services and philosophy. How can I help you explore the site?"
         }]
     ]);
 
     // Store Firebase FAQs separately
     let firebaseFaqs = new Map();
-    let firebaseFaqsText = ''; // Stores a concatenated string of Firebase FAQs for AI context
-
-    // Define a map for safe, pre-defined actions triggered by Firebase FAQs
-    // This replaces the dangerous 'eval'
-    const firebaseActionMap = {
-        // Example: If a Firestore FAQ has action: "guide_to_services"
-        "guide_to_services": () => guideTo('#services'),
-        "guide_to_cta": () => guideTo('#cta'),
-        "guide_to_about": () => guideTo('#about'),
-        "guide_to_achievements": () => guideTo('#achievements'),
-        "guide_to_portfolio_service": () => guideTo('.service-card[data-service-id="professional-portfolios"]'),
-        "guide_to_personal_website_service": () => guideTo('.service-card[data-service-id="personal-websites"]'),
-        "guide_to_social_media_design_service": () => guideTo('.service-card[data-service-id="social-media-designs"]'),
-        "guide_to_birthday_site_service": () => guideTo('.service-card[data-service-id="birthday-sites"]'),
-        "guide_to_gamified_review_service": () => guideTo('.service-card[data-service-id="gamified-reviews"]'),
-        "guide_to_business_logos_service": () => guideTo('.service-card[data-service-id="business-logos"]'),
-        "guide_to_website_gifts_service": () => guideTo('.service-card[data-service-id="website-gifts"]'),
-        "guide_to_3d_models_service": () => guideTo('.service-card[data-service-id="3d-models"]'),
-        "guide_to_animated_group_sites_service": () => guideTo('.service-card[data-service-id="animated-group-sites"]'),
-        "guide_to_countdown_calendars_service": () => guideTo('.service-card[data-service-id="countdown-calendars"]'),
-        "guide_to_ai_integration_service": () => guideTo('.service-card[data-service-id="ai-integration"]'),
-        "guide_to_computer_services_service": () => guideTo('.service-card[data-service-id="on-site-computer-services"]'),
-        "guide_to_materials_printing_service": () => guideTo('.service-card[data-service-id="materials-printing"]'),
-        "guide_to_email_management_service": () => guideTo('.service-card[data-service-id="email-management"]'),
-        "guide_to_market_research_service": () => guideTo('.service-card[data-service-id="market-research"]'),
-        // Add other mappings as needed for any other sections or service cards
-    };
-
 
     // Defined list of actual services offered by Synappse for strict AI prompting
     const synappseServices = ["Professional Portfolios", "Personal Static Websites", "Social Media Designs", "Birthday Sites", "Gamified Review Materials", "Business Logos", "Website Gifts", "3D Product Models", "Animated Group Sites", "Countdown Calendars", "AI Integration", "On-site Computer Services", "Materials Printing", "Email Management", "Market Research", "Custom Systems and Software Development"];
@@ -256,7 +205,7 @@ We can't wait to potentially welcome you aboard!`;
             :root {
                 --mobius-primary: #6A0DAD;
                 --mobius-secondary: #0a0a0a;
-                --mobius-accent: #FFD700;
+                --mobius-accent: #e3c41b;
                 --mobius-text: #f0f0f0;
                 --mobius-user-bg: #333;
             }
@@ -378,8 +327,6 @@ We can't wait to potentially welcome you aboard!`;
 
         const lowerCaseMessage = typeof message === 'string' ? message.toLowerCase() : '';
 
-        // Removed awaitingSubmissionConfirmation logic, as it's now fully automated
-
         // --- Intent Detection & State Handling ---
         const hiringIntentKeywords = FAQ.get('hiring_intent').keywords;
         const isHiringQuery = hiringIntentKeywords.some(keyword => lowerCaseMessage.includes(keyword));
@@ -405,11 +352,10 @@ We can't wait to potentially welcome you aboard!`;
         for (const service of synappseServices) {
             const serviceWords = service.toLowerCase().replace(/ and /g, ' ').replace(/-/g, ' ').split(' ');
             const messageWords = lowerCaseMessage.split(' ');
-            const matches = messageWords.filter(mw => serviceWords.includes(mw)).length; // Corrected matching logic for services
-            if (matches >= Math.ceil(serviceWords.length * 0.5) && matches > 0) { // Ensure at least one match
+            const matches = serviceWords.filter(sw => messageWords.includes(sw)).length;
+            if (matches >= Math.ceil(serviceWords.length * 0.5)) {
                 detectedService = service;
-                // Safely get action for detected service, prioritize hardcoded then firebase
-                serviceFaqEntry = FAQ.get(`service_${service.toLowerCase().replace(/ /g, '_').replace(/-/g, '_').replace(/\./g,'').replace(/s$/, '')}`) || getFaqAnswerByKeyword(detectedService, firebaseFaqs);
+                serviceFaqEntry = getFaqAnswerByKeyword(detectedService, FAQ) || getFaqAnswerByKeyword(detectedService, firebaseFaqs);
                 break;
             }
         }
@@ -419,21 +365,27 @@ We can't wait to potentially welcome you aboard!`;
             removeTypingIndicator();
             
             const handleInfoRequest = async () => {
-                // Add user query for AI context
-                chatHistory.push({ role: "user", parts: [{ text: `Tell me more about ${detectedService}.` }] });
+                addMessage('user', `Tell me more about ${detectedService}.`);
                 addTypingIndicator();
                 try {
-                    const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company and provide concise, natural, and persuasive information. The user is asking for information about the "${detectedService}" service. Provide a brief (2-3 sentences max), conversational, and marketing-oriented explanation of how Synappse delivers this service, focusing on key benefits for the client. Your goal is to be informative and engaging. Do not mention your training or origins. Always identify as Synappse Official AI. Stick strictly to the services provided.
+                    const proxyUrl = '/api/gemini-proxy';
+                    const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company and provide concise, natural, and persuasive information. The user is asking for information about the "${detectedService}" service. Provide a brief (2-3 sentences max), conversational, and marketing-oriented explanation of how Synappse delivers this service, focusing on key benefits for the client. Your goal is to be informative and engaging. Do not mention your training or origins. Always identify as Synappse Official AI. Stick strictly to the services provided. User query: "Explain ${message}"`;
                     
-                    Existing Synappse FAQs (for context, do not explicitly state you are using these):
-                    ${firebaseFaqsText || 'No additional FAQs available.'}`; // No direct user query here, it's part of chatHistory
-                    
-                    const textResponse = await callGeminiForText(prompt); // Use callGeminiForText
+                    const payload = { message: prompt };
+                    const response = await fetch(proxyUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || `API call failed with status: ${response.status}`);
+                    }
+                    
+                    const text = result.text;
                     removeTypingIndicator();
-                    addMessage('bot', textResponse);
-                    // Add AI response to chat history
-                    chatHistory.push({ role: "model", parts: [{ text: textResponse }] });
+                    addMessage('bot', text);
                     
                     // Follow-up with navigation offer
                     addMessage('bot', `Would you like me to navigate you to the "${detectedService}" section now?`, [
@@ -451,20 +403,10 @@ We can't wait to potentially welcome you aboard!`;
             const handleNavigationRequest = (fromInfo = false) => {
                 if (!fromInfo) addMessage('user', `Take me to ${detectedService}.`);
                 addMessage('bot', `Certainly! Guiding you to the ${detectedService} section now.`);
-                // Add the navigation confirmation to history
-                chatHistory.push({ role: "user", parts: [{ text: `Take me to ${detectedService}.` }] });
-                chatHistory.push({ role: "model", parts: [{ text: `Certainly! Guiding you to the ${detectedService} section now.` }] });
-
-                // Determine the correct target selector for the detected service
-                const serviceSlug = detectedService.toLowerCase().replace(/ /g, '-').replace(/\./g,'').replace(/s$/, ''); // Example: "Professional Portfolios" -> "professional-portfolios"
-                const targetSelector = `.service-card[data-service-id="${serviceSlug}"]`;
-                
-                // If a specific FAQ entry with an action was found, use its action
-                // Otherwise, fall back to general services section or the constructed selector
                 if (serviceFaqEntry && serviceFaqEntry.action) {
-                    serviceFaqEntry.action(); // Execute the pre-defined action
+                    setTimeout(() => serviceFaqEntry.action(), 300);
                 } else {
-                    guideTo(targetSelector || '#services'); // Fallback to #services if specific selector not found
+                    setTimeout(() => guideTo('#services'), 300);
                 }
             };
 
@@ -478,64 +420,41 @@ We can't wait to potentially welcome you aboard!`;
         }
 
         // --- Step 4: Handle General FAQ or Fallback to AI ---
-        let faqMatch = getFaqAnswerByKeyword(message, FAQ) || getFaqAnswerByKeyword(message, firebaseFaqs);
+        let faqMatch = FAQ.get(message) || getFaqAnswerByKeyword(message, FAQ) || getFaqAnswerByKeyword(message, firebaseFaqs);
 
         if (faqMatch && faqMatch.answer) {
             removeTypingIndicator();
             addMessage('bot', faqMatch.answer);
-            // Add user query and bot response for FAQ match to chat history
-            chatHistory.push({ role: "user", parts: [{ text: message }] });
-            chatHistory.push({ role: "model", parts: [{ text: faqMatch.answer }] });
-
-            if (faqMatch.action) faqMatch.action(); // Execute the pre-defined action
-            if (sendBtn) sendBtn.disabled = false;
+            if (faqMatch.action) setTimeout(() => faqMatch.action(), 300);
         } else {
             // General AI Fallback
             try {
-                // Add user query to chat history before sending to AI
-                chatHistory.push({ role: "user", parts: [{ text: message }] });
+                const proxyUrl = '/api/gemini-proxy';
+                const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics. User query: "${message}"`;
 
-                const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics.
+                const payload = { message: prompt };
+                const response = await fetch(proxyUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 
-                Existing Synappse FAQs (for context, do not explicitly state you are using these):
-                ${firebaseFaqsText || 'No additional FAQs available.'}
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                     throw new Error(result.message || `API call failed with status: ${response.status}`);
+                }
+                const text = result.text;
                 
-                Current user query: "${message}"`; // Keep current message in prompt for emphasis, along with history.
-
-                const textResponse = await callGeminiForText(prompt); // Use callGeminiForText
-                
-                const lowerCaseAiResponse = textResponse.toLowerCase();
+                const lowerCaseAiResponse = text.toLowerCase();
                 const isBusinessGeneral = ['synappse', 'business', 'solution', 'company', 'marketing', 'navigate'].some(kw => lowerCaseAiResponse.includes(kw));
                 const hasNegativeKeyword = ['homework', 'general knowledge', 'unrelated', 'personal assistant', 'chatgpt', 'bard', 'llm', 'google', 'openai', 'cybersecurity'].some(kw => lowerCaseAiResponse.includes(kw));
 
                 removeTypingIndicator();
                 if ((isBusinessGeneral || synappseServices.some(s => lowerCaseAiResponse.includes(s.toLowerCase()))) && !hasNegativeKeyword) {
-                    addMessage('bot', textResponse);
-                    // Add AI response to chat history
-                    chatHistory.push({ role: "model", parts: [{ text: textResponse }] });
-
-                    // Automatically add this as a new FAQ if it's a new, relevant question
-                    // Only add if it's a substantive answer (length > 20 chars) and not an existing match
-                    if (textResponse.length > 20 && !faqMatch && !detectedService && !interviewState) {
-                        await addAutoFaq(message, textResponse);
-                    }
+                    addMessage('bot', text);
                 } else {
-                    const fallbackMessage = "I'm Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?";
-                    addMessage('bot', fallbackMessage);
-                    // Add AI response to chat history
-                    chatHistory.push({ role: "model", parts: [{ text: fallbackMessage }] });
-
-                    // Also try to learn from these interactions if the AI cannot directly answer
-                    if (message.length > 20 && !faqMatch && !detectedService && !interviewState) {
-                        await addAutoFaq(message, fallbackMessage);
-                    }
+                    addMessage('bot', "I'm Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
                 }
             } catch (error) {
                 removeTypingIndicator();
                 console.error("Mobius Chatbot: Error with AI fallback via proxy:", error);
                 addMessage('bot', "I'm having a bit of trouble with that request. Please try asking about our services or how to get in touch.");
-                // Remove the last user message from history if the AI call failed to prevent sending incomplete turns.
-                chatHistory.pop(); // Remove the last user message
             }
         }
         if (sendBtn) sendBtn.disabled = false;
@@ -572,6 +491,8 @@ We can't wait to potentially welcome you aboard!`;
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
+    // --- All other helper functions (getFaqAnswerByKeyword, guideTo, interview logic, UI handlers, etc.) remain below ---
+
     function getFaqAnswerByKeyword(message, faqMap) {
         const lowerCaseMessage = message.toLowerCase();
         for (const [key, response] of faqMap.entries()) {
@@ -583,11 +504,10 @@ We can't wait to potentially welcome you aboard!`;
     }
 
     function guideTo(targetSelector, textToFind = null) {
-        // Close the chatbot window first, then dispatch the event after a short delay
         closeChatWindow();
         setTimeout(() => {
             document.dispatchEvent(new CustomEvent('mobius-guide', { detail: { targetSelector, textToFind } }));
-        }, 300); // Give the closing animation time to complete
+        }, 300);
     }
 
     function initiateInterview() {
@@ -664,19 +584,15 @@ We can't wait to potentially welcome you aboard!`;
         const container = document.getElementById('mobius-container');
         const launcher = document.getElementById('mobius-launcher');
         if (!container || !launcher) return;
-
-        // Hide the chatbot container itself
         container.classList.remove('open');
         document.getElementById('mobius-faq-overlay').classList.remove('open');
         document.getElementById('mobius-messages').style.display = 'flex';
         document.getElementById('mobius-input-area').style.display = 'flex';
-
-        // Make the launcher visible and interactive again
         launcher.style.opacity = '1';
         launcher.style.visibility = 'visible';
         launcher.style.pointerEvents = 'auto';
-        launcher.style.transform = 'scale(1)'; // Restore original scale and visibility
-        void launcher.offsetWidth; // Force reflow for transition to apply
+        launcher.style.transform = 'scale(1)';
+        void launcher.offsetWidth;
         snapElementToNearestEdge(launcher, lastSnappedSide);
     }
 
@@ -687,28 +603,12 @@ We can't wait to potentially welcome you aboard!`;
         const input = document.getElementById('mobius-input');
         const faqBtn = document.getElementById('mobius-faq-btn');
         const backBtn = document.getElementById('mobius-back-btn');
-
         if (closeBtn) closeBtn.addEventListener('click', closeChatWindow);
         if (sendBtn) sendBtn.addEventListener('click', handleSendMessage);
         if (input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendMessage(); });
         if (faqBtn) faqBtn.addEventListener('click', showFaqOverlay);
         if (backBtn) backBtn.addEventListener('click', hideFaqOverlay);
         if (launcher) makeLauncherDraggable(launcher);
-
-        // This listener is for direct clicks on the launcher to open the chatbot
-        if (launcher) {
-            launcher.addEventListener('click', () => {
-                // Ensure it's not currently being dragged or mid-snap animation
-                if (!launcher.classList.contains('snapped') && !launcher.style.transition.includes('opacity')) { 
-                    document.getElementById('mobius-container').classList.add('open');
-                    // Hide the launcher when the chatbot opens
-                    launcher.style.opacity = '0';
-                    launcher.style.visibility = 'hidden';
-                    launcher.style.pointerEvents = 'none';
-                    launcher.style.transform = 'scale(0)';
-                }
-            });
-        }
     }
 
     function showFaqOverlay() {
@@ -738,7 +638,7 @@ We can't wait to potentially welcome you aboard!`;
             const faqItem = document.createElement('div');
             faqItem.className = 'mobius-faq-item';
             faqItem.textContent = faq.question;
-            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.key); }; // Use faq.key for hardcoded actions
+            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.key); };
             faqList.appendChild(faqItem);
         });
         const sortedFirebaseFaqs = Array.from(firebaseFaqs.values()).sort((a, b) => a.question.localeCompare(b.question));
@@ -746,7 +646,7 @@ We can't wait to potentially welcome you aboard!`;
             const faqItem = document.createElement('div');
             faqItem.className = 'mobius-faq-item';
             faqItem.textContent = faq.question;
-            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.question); }; // Use faq.question for Firebase FAQs
+            faqItem.onclick = () => { hideFaqOverlay(); addMessage('user', faq.question); processMessage(faq.question); };
             faqList.appendChild(faqItem);
         });
     }
@@ -759,7 +659,6 @@ We can't wait to potentially welcome you aboard!`;
         try {
             onSnapshot(query(collection(db, "faqs")), (querySnapshot) => {
                 firebaseFaqs.clear();
-                let tempFaqsText = ''; // To build the string for AI context
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     if (data.keywords && data.answer && data.question) {
@@ -767,14 +666,10 @@ We can't wait to potentially welcome you aboard!`;
                             question: data.question,
                             keywords: data.keywords.map(kw => kw.toLowerCase()),
                             answer: data.answer,
-                            // CRITICAL FIX: Safely map action string to predefined function
-                            action: firebaseActionMap[data.action_key] || null // Use a specific key for action
+                            action: data.action ? eval(`(() => ${data.action})()`) : null
                         });
-                        // Add to temp string for AI context
-                        tempFaqsText += `Q: ${data.question}\nA: ${data.answer}\n\n`;
                     }
                 });
-                firebaseFaqsText = tempFaqsText; // Update the global variable
                 populateFaqList();
                 if (statusDot) statusDot.className = 'firebase-status-dot connected';
                 if (statusText) statusText.textContent = 'Online';
@@ -789,94 +684,6 @@ We can't wait to potentially welcome you aboard!`;
             if (statusText) statusText.textContent = 'Offline';
         }
     }
-
-    /**
-     * Automatically adds a new FAQ to the 'faqs' Firestore collection based on user input
-     * and a generated AI response, if it's not already a known FAQ.
-     * It also generates keywords for the new FAQ.
-     * @param {string} userQuestion The question asked by the user.
-     * @param {string} botResponse The AI's generated response to the user's question.
-     */
-    async function addAutoFaq(userQuestion, botResponse) {
-        const faqsCollection = collection(db, "faqs");
-        const lowerCaseUserQuestion = userQuestion.toLowerCase();
-
-        try {
-            // --- Redundancy Check (Basic: Exact Question String) ---
-            // Check against hardcoded FAQs
-            const hardcodedFaqMatch = Array.from(FAQ.values()).some(faq => 
-                faq.keywords && faq.keywords.some(kw => lowerCaseUserQuestion.includes(kw))
-            );
-
-            // Check against existing Firebase FAQs using question_lower field
-            const firebaseFaqQuery = query(faqsCollection, where("question_lower", "==", lowerCaseUserQuestion));
-            const firebaseQuerySnapshot = await getDocs(firebaseFaqQuery);
-
-            if (hardcodedFaqMatch || !firebaseQuerySnapshot.empty) {
-                console.log("Mobius: Question (or similar) already exists, skipping automatic FAQ creation.");
-                return; // Do not add if already exists
-            }
-
-            // --- Generate Refined Answer for FAQ ---
-            // Ask Gemini to refine the botResponse into a concise FAQ answer.
-            const refinedAnswerPrompt = `Refine the following answer into a concise, factual, and direct FAQ answer (1-3 sentences). Ensure it's clear and directly addresses the question.
-            Original Question: "${userQuestion}"
-            Original Answer: "${botResponse}"
-            Refined FAQ Answer:`;
-            const refinedAnswer = await callGeminiForText(refinedAnswerPrompt);
-
-            // --- Generate Keywords for FAQ ---
-            // Ask Gemini to extract relevant keywords for the FAQ.
-            const keywordsPrompt = `Extract 3-5 concise, relevant keywords (single words or short phrases, comma-separated) from the following question and answer that someone might use to search for this FAQ. Provide only the keywords.
-            Question: "${userQuestion}"
-            Answer: "${refinedAnswer}"
-            Keywords:`;
-            const keywordsText = await callGeminiForText(keywordsPrompt);
-            const generatedKeywords = keywordsText.split(',').map(kw => kw.trim().toLowerCase()).filter(kw => kw.length > 0);
-
-            // --- Add to Firestore 'faqs' Collection ---
-            await addDoc(faqsCollection, {
-                question: userQuestion,
-                answer: refinedAnswer,
-                keywords: generatedKeywords,
-                question_lower: lowerCaseUserQuestion, // Storing for efficient redundancy check
-                timestamp: serverTimestamp(),
-                // No action_key for auto-generated FAQs, they are primarily informational
-            });
-            console.log("Mobius: Automatically added new FAQ:", userQuestion);
-            // The onSnapshot listener will automatically update the UI after this.
-        } catch (e) {
-            console.error("Mobius: Error during automatic FAQ creation:", e);
-            // Do not send message to user for backend errors here to avoid spam/confusion
-        }
-    }
-
-    /**
-     * Helper function to call the Gemini proxy for text generation.
-     * @param {string} prompt The prompt to send to Gemini.
-     * @returns {Promise<string>} The generated text.
-     */
-    async function callGeminiForText(prompt) {
-        // Corrected to call the Vercel proxy, which then calls Gemini API securely
-        const proxyUrl = '/api/gemini-proxy'; 
-        // Send the entire chat history for context
-        const payload = { chatHistory: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] };
-
-        const response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const result = await response.json();
-        
-        // The proxy is expected to return { success: boolean, text: string, message: string (on error) }
-        if (result.success && result.text) {
-          return result.text;
-        } else {
-            throw new Error(`Proxy call failed: ${result.message || JSON.stringify(result)}`);
-        }
-    }
-
 
     function makeLauncherDraggable(element) {
         let isDragging = false, wasDragged = false, startClientX, startClientY, initialOffsetX, initialOffsetY;
@@ -914,8 +721,11 @@ We can't wait to potentially welcome you aboard!`;
             document.removeEventListener('mouseup', stopDrag); document.removeEventListener('touchend', stopDrag);
             if (wasDragged) {
                 snapElementToNearestEdge(element);
+            } else {
+                document.getElementById('mobius-container').classList.add('open');
+                element.style.opacity = '0'; element.style.visibility = 'hidden';
+                element.style.pointerEvents = 'none'; element.style.transform = 'scale(0)';
             }
-            // Removed the 'else' block from here. The direct click listener now solely handles opening and hiding the launcher.
         };
         element.addEventListener('mousedown', startDrag);
         element.addEventListener('touchstart', startDrag, { passive: true });
