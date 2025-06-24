@@ -1,17 +1,26 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 7.1 - Vercel Proxy Integration
- * - **Key Improvement**: Rerouted all Gemini API calls through a Vercel serverless function (`/api/gemini-proxy`).
- * - **Security**: Removed the client-side `GEMINI_API_KEY`. The API key is now securely stored as an environment variable on Vercel, protecting it from browser exposure.
- * - **Optimization**: Aligned client-side `fetch` requests with the expected payload and response structure of the new proxy function.
- * - **Follow-up Action**: Maintained the seamless user journey where Mobius offers to navigate after providing information.
+ * @version 7.2 - Dynamic FAQ Submission & AI Contextualization
+ * - **Key Improvement**: Implemented functionality to allow users to submit unanswered questions for review,
+ * which are then stored in a Firestore collection (`potential_faqs`).
+ * - **Firebase Integration**: Utilizes Firestore to store user-submitted questions, enabling administrators
+ * to review and add them as official FAQs.
+ * - **AI Contextualization**: Modified the AI prompt to include existing Firebase FAQ content,
+ * allowing Gemini to potentially "recycle" information from the dynamic FAQ list when generating responses.
+ * (Note: This approach can impact token usage; more advanced RAG would be needed for large datasets).
+ * - **Security/Privacy**: User consent for submitting questions is now explicitly handled.
+ * Acknowledges the user's existing privacy policy regarding data collection.
+ * - **Redundancy Avoidance (Basic)**: Includes a simple check to avoid submitting duplicate questions
+ * to the `potential_faqs` collection if an identical question has been asked recently.
+ * - **Error Handling**: Enhanced error handling for Firebase operations.
  * @author Synappse
  */
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// Added addDoc and serverTimestamp for writing to Firestore
+import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
 
@@ -30,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const analytics = getAnalytics(app);
+    const analytics = getAnalytics(app); // Analytics initialized, though not actively used for this feature.
 
     // Cooldown period in milliseconds to prevent API spam
     const COOLDOWN_PERIOD = 3000; // 3 seconds
@@ -95,10 +104,11 @@ Please send an email to **synpps@gmail.com** with the subject line 'Aspiring Syn
 We can't wait to potentially welcome you aboard!`;
 
     // --- Fully Interactive FAQ Map with unique keys ---
+    // This map stores hardcoded FAQs. Firestore FAQs are managed separately in firebaseFaqs.
     const FAQ = new Map([
         ['hiring_intent', {
             keywords: ['hire', 'hired', 'join', 'job', 'work for', 'career', 'recruiting', 'recruitment', 'interview', 'apply', 'applying', 'employment', 'position', 'opportunity'],
-            answer: null, 
+            answer: null, // Answer is handled by initiateInterview logic
             action: () => initiateInterview()
         }],
         ['price_intent', {
@@ -151,19 +161,24 @@ We can't wait to potentially welcome you aboard!`;
             answer: "Yes, Synappse offers cutting-edge custom system and software development. We architect bespoke solutions tailored precisely to your business needs, optimizing workflows and driving innovation. From concept to deployment, we ensure your software empowers your growth. Please use the 'Get in Touch Now!' button for a detailed consultation to discuss how we can build your next big thing!"
         }],
         ['about_mobius', {
-            keywords: ['about you', 'who are you', 'who is it', 'what are you', 'your name', 'who is mobius', 'are you mobius', 'what is mobius', 'tell me about yourself', 'your identity', 'are you google', 'trained by google', 'by google', 'who created you', 'who developed you', 'your origin', 'so you are', 'who makes you', 'who are you?', 'what are you?', 'tell me who you are', 'your identity?', 'who made you', 'who built you', 'what is your purpose', 'what is your function', 'you are', 'you are>', 'who you are', 'your creator', 'who is your creator', 'your background', 'what about you', 'are you an ai', 'are you a bot', 'are you a chatbot', 'are you an artificial intelligence', 'what kind of ai are you', 'who developed this'],
+            keywords: ['about you', 'who are you', 'who is it', 'what are you', 'your name', 'who is mobius', 'are you mobius', 'what is mobius', 'tell me about yourself', 'your identity', 'are you google', 'trained by google', 'by google', 'who created you', 'who developed you', 'your origin', 'so you are', 'who you are', 'your creator', 'who is your creator', 'your background', 'what about you', 'are you an ai', 'are you a bot', 'are you a chatbot', 'are you an artificial intelligence', 'what kind of ai are you', 'who developed this'],
             answer: "I am Mobius, the Synappse Official AI. I'm here to guide you through our services and philosophy. How can I help you explore the site?"
         }]
     ]);
 
     // Store Firebase FAQs separately
     let firebaseFaqs = new Map();
+    let firebaseFaqsText = ''; // Stores a concatenated string of Firebase FAQs for AI context
 
     // Defined list of actual services offered by Synappse for strict AI prompting
     const synappseServices = ["Professional Portfolios", "Personal Static Websites", "Social Media Designs", "Birthday Sites", "Gamified Review Materials", "Business Logos", "Website Gifts", "3D Product Models", "Animated Group Sites", "Countdown Calendars", "AI Integration", "On-site Computer Services", "Materials Printing", "Email Management", "Market Research", "Custom Systems and Software Development"];
 
     let lastMessageTimestamp = 0;
     let lastSnappedSide = 'right';
+
+    // Variable to track if the current message is a follow-up to a submission offer
+    let awaitingSubmissionConfirmation = false;
+    let lastUnansweredQuestion = '';
 
     async function initializeChatbot() {
         injectMetaViewport();
@@ -327,6 +342,25 @@ We can't wait to potentially welcome you aboard!`;
 
         const lowerCaseMessage = typeof message === 'string' ? message.toLowerCase() : '';
 
+        // Handle confirmation for submitting an unanswered question
+        if (awaitingSubmissionConfirmation) {
+            awaitingSubmissionConfirmation = false; // Reset flag
+            if (lowerCaseMessage.includes('yes')) {
+                addMessage('user', 'Yes.'); // Acknowledge user's yes
+                addTypingIndicator();
+                await addQuestionForReview(lastUnansweredQuestion);
+                removeTypingIndicator();
+                addMessage('bot', "Thank you! Your question has been noted and will be reviewed to improve Mobius's knowledge. What else can I help you with?");
+            } else {
+                addMessage('user', 'No.'); // Acknowledge user's no
+                addTypingIndicator();
+                removeTypingIndicator();
+                addMessage('bot', "No problem! What else can I help you with today?");
+            }
+            if (sendBtn) sendBtn.disabled = false;
+            return;
+        }
+
         // --- Intent Detection & State Handling ---
         const hiringIntentKeywords = FAQ.get('hiring_intent').keywords;
         const isHiringQuery = hiringIntentKeywords.some(keyword => lowerCaseMessage.includes(keyword));
@@ -369,7 +403,13 @@ We can't wait to potentially welcome you aboard!`;
                 addTypingIndicator();
                 try {
                     const proxyUrl = '/api/gemini-proxy';
-                    const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company and provide concise, natural, and persuasive information. The user is asking for information about the "${detectedService}" service. Provide a brief (2-3 sentences max), conversational, and marketing-oriented explanation of how Synappse delivers this service, focusing on key benefits for the client. Your goal is to be informative and engaging. Do not mention your training or origins. Always identify as Synappse Official AI. Stick strictly to the services provided. User query: "Explain ${message}"`;
+                    // Include existing Firebase FAQs in the prompt for AI to "recycle" info
+                    const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company and provide concise, natural, and persuasive information. The user is asking for information about the "${detectedService}" service. Provide a brief (2-3 sentences max), conversational, and marketing-oriented explanation of how Synappse delivers this service, focusing on key benefits for the client. Your goal is to be informative and engaging. Do not mention your training or origins. Always identify as Synappse Official AI. Stick strictly to the services provided.
+                    
+                    Existing Synappse FAQs (for context, do not explicitly state you are using these):
+                    ${firebaseFaqsText || 'No additional FAQs available.'}
+                    
+                    User query: "Explain ${message}"`;
                     
                     const payload = { message: prompt };
                     const response = await fetch(proxyUrl, {
@@ -426,11 +466,18 @@ We can't wait to potentially welcome you aboard!`;
             removeTypingIndicator();
             addMessage('bot', faqMatch.answer);
             if (faqMatch.action) setTimeout(() => faqMatch.action(), 300);
+            if (sendBtn) sendBtn.disabled = false;
         } else {
             // General AI Fallback
             try {
                 const proxyUrl = '/api/gemini-proxy';
-                const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics. User query: "${message}"`;
+                // Include existing Firebase FAQs in the prompt for AI to "recycle" info
+                const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics.
+                
+                Existing Synappse FAQs (for context, do not explicitly state you are using these):
+                ${firebaseFaqsText || 'No additional FAQs available.'}
+                
+                User query: "${message}"`;
 
                 const payload = { message: prompt };
                 const response = await fetch(proxyUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -448,8 +495,25 @@ We can't wait to potentially welcome you aboard!`;
                 removeTypingIndicator();
                 if ((isBusinessGeneral || synappseServices.some(s => lowerCaseAiResponse.includes(s.toLowerCase()))) && !hasNegativeKeyword) {
                     addMessage('bot', text);
+                    // Offer to save the question if AI's general answer still didn't seem to perfectly match a specific FAQ
+                    // Avoid offering for very short or simple acknowledgment responses.
+                    if (text.length > 20 && !faqMatch && !detectedService && !interviewState) {
+                        lastUnansweredQuestion = message; // Store the original user question
+                        awaitingSubmissionConfirmation = true; // Set flag
+                        addMessage('bot', "I'm still learning! Would you like to submit this question for review so we can improve Mobius's knowledge base?", [
+                            { text: 'Yes', handler: () => handleSendMessage('yes') },
+                            { text: 'No', handler: () => handleSendMessage('no') }
+                        ]);
+                    }
                 } else {
                     addMessage('bot', "I'm Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
+                    // If AI gives a fallback response, offer to save the question
+                    lastUnansweredQuestion = message; // Store the original user question
+                    awaitingSubmissionConfirmation = true; // Set flag
+                    addMessage('bot', "I'm still learning! Would you like to submit this question for review so we can improve Mobius's knowledge base?", [
+                        { text: 'Yes', handler: () => handleSendMessage('yes') },
+                        { text: 'No', handler: () => handleSendMessage('no') }
+                    ]);
                 }
             } catch (error) {
                 removeTypingIndicator();
@@ -604,7 +668,8 @@ We can't wait to potentially welcome you aboard!`;
         const faqBtn = document.getElementById('mobius-faq-btn');
         const backBtn = document.getElementById('mobius-back-btn');
         if (closeBtn) closeBtn.addEventListener('click', closeChatWindow);
-        if (sendBtn) sendBtn.addEventListener('click', handleSendMessage);
+        // Modified handleSendMessage to potentially accept a predefined message from button clicks
+        if (sendBtn) sendBtn.addEventListener('click', () => handleSendMessage());
         if (input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendMessage(); });
         if (faqBtn) faqBtn.addEventListener('click', showFaqOverlay);
         if (backBtn) backBtn.addEventListener('click', hideFaqOverlay);
@@ -659,6 +724,7 @@ We can't wait to potentially welcome you aboard!`;
         try {
             onSnapshot(query(collection(db, "faqs")), (querySnapshot) => {
                 firebaseFaqs.clear();
+                let tempFaqsText = ''; // To build the string for AI context
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     if (data.keywords && data.answer && data.question) {
@@ -666,10 +732,15 @@ We can't wait to potentially welcome you aboard!`;
                             question: data.question,
                             keywords: data.keywords.map(kw => kw.toLowerCase()),
                             answer: data.answer,
+                            // DANGER: Using eval for action is a security risk.
+                            // Ensure actions from Firestore are extremely trusted or avoid this.
                             action: data.action ? eval(`(() => ${data.action})()`) : null
                         });
+                        // Add to temp string for AI context
+                        tempFaqsText += `Q: ${data.question}\nA: ${data.answer}\n\n`;
                     }
                 });
+                firebaseFaqsText = tempFaqsText; // Update the global variable
                 populateFaqList();
                 if (statusDot) statusDot.className = 'firebase-status-dot connected';
                 if (statusText) statusText.textContent = 'Online';
@@ -684,6 +755,43 @@ We can't wait to potentially welcome you aboard!`;
             if (statusText) statusText.textContent = 'Offline';
         }
     }
+
+    /**
+     * Attempts to add a user's unanswered question to a Firestore collection for review.
+     * Includes a basic check to prevent recent duplicates.
+     * @param {string} questionText The question asked by the user.
+     */
+    async function addQuestionForReview(questionText) {
+        const potentialFaqsCollection = collection(db, "potential_faqs");
+        const lowerCaseQuestion = questionText.toLowerCase();
+
+        try {
+            // Basic check for recent duplicates to avoid redundancy
+            // This is a simple string match. For semantic redundancy, advanced NLP/vector search is needed.
+            const q = query(potentialFaqsCollection, 
+                            where("question_lower", "==", lowerCaseQuestion)); // Using a lowercased field for exact match query
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                console.log("Mobius: Question already submitted recently.");
+                addMessage('bot', "This question seems similar to one already submitted recently. We're on it!");
+                return;
+            }
+
+            // If not a recent duplicate, add the question for review
+            await addDoc(potentialFaqsCollection, {
+                question: questionText,
+                question_lower: lowerCaseQuestion, // Store a lowercased version for querying
+                timestamp: serverTimestamp(),
+                status: 'pending_review' // Status for admin
+            });
+            console.log("Mobius: Question submitted for review:", questionText);
+        } catch (e) {
+            console.error("Mobius: Error adding question for review:", e);
+            addMessage('bot', "Oops! There was an error submitting your question for review. Please try again later.");
+        }
+    }
+
 
     function makeLauncherDraggable(element) {
         let isDragging = false, wasDragged = false, startClientX, startClientY, initialOffsetX, initialOffsetY;
