@@ -1,18 +1,20 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 7.6 - Critical Fix: Re-enabled Vercel Proxy for all AI API calls.
- * - **CRITICAL FIX**: All direct calls to `generativelanguage.googleapis.com` have been
- * reverted to route through the Vercel proxy (`/api/gemini-proxy`). This resolves the
- * `403 Forbidden` error and ensures secure handling of the Gemini API key via the Vercel
- * environment variable.
- * - **Restored AI Functionality**: With the proxy correctly utilized, Gemini AI should now
- * respond naturally, provide proper context, and enable correct navigation actions.
- * - **Navigation Fixes**: The improved `guideTo` function (waiting for transition end) and
- * the removal of `eval()` are retained, ensuring reliable navigation once AI calls succeed.
- * - **Automated FAQ Learning**: Continues to automatically add new, AI-generated FAQs to Firestore.
- * - **Bug Fix: Launcher Visibility**: Retains the fix for the launcher disappearing.
- * - **Redundancy Avoidance (Basic)**: Retains the basic exact-match redundancy check for new FAQs.
+ * @version 7.7 - Enhanced Conversation Memory & Contextual AI Responses
+ * - **Key Improvement**: Implemented a `chatHistory` array to store previous user and bot messages.
+ * This history is now sent with every AI API call, allowing Gemini to maintain conversation context.
+ * - **More Natural Dialogue**: Addresses the issue of Mobius not remembering previous turns,
+ * leading to more coherent and natural responses, especially for follow-up questions like "tell me more".
+ * - **Proxy Integration for History**: Updated `callGeminiForText` to send the `chatHistory`
+ * through the Vercel proxy.
+ * - **IMPORTANT ACTION REQUIRED**: The `gemini-proxy.js` file on your Vercel server MUST
+ * also be updated to accept and forward this `chatHistory` to the Gemini API. The necessary
+ * proxy code update will be provided separately.
+ * - **Removes Redundant Question Repetition**: By providing context, the AI should be less likely
+ * to repeat questions or ask for unnecessary clarification if the information is in the history.
+ * - **Retains Previous Fixes**: All prior bug fixes (launcher visibility, safe actions) and
+ * automated FAQ learning are retained.
  * @author Synappse
  */
 
@@ -42,6 +44,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Cooldown period in milliseconds to prevent API spam
     const COOLDOWN_PERIOD = 3000; // 3 seconds
+
+    // --- Conversation History ---
+    // Stores messages in the format expected by the Gemini API: [{ role: "user", parts: [{ text: "..." }] }, { role: "model", parts: [{ text: "..." }] }]
+    // Initialize with a system instruction or initial bot message to set the AI's persona and guidelines.
+    let chatHistory = [{
+        role: "user",
+        parts: [{ text: "You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: Professional Portfolios, Personal Static Websites, Social Media Designs, Birthday Sites, Gamified Review Materials, Business Logos, Website Gifts, 3D Product Models, Animated Group Sites, Countdown Calendars, AI Integration, On-site Computer Services, Materials Printing, Email Management, Market Research, Custom Systems and Software Development. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics. Always identify as Synappse Official AI. Keep responses concise and focused on Synappse." }]
+    }, {
+        role: "model",
+        parts: [{ text: "Hello! I'm Mobius. How can I help you explore our digital craft today?" }]
+    }];
+
 
     // --- Dynamic Interview State Management ---
     let interviewState = null; // Can be null, 'pending_confirmation', or 'active'
@@ -405,33 +419,21 @@ We can't wait to potentially welcome you aboard!`;
             removeTypingIndicator();
             
             const handleInfoRequest = async () => {
-                addMessage('user', `Tell me more about ${detectedService}.`);
+                // Add user query for AI context
+                chatHistory.push({ role: "user", parts: [{ text: `Tell me more about ${detectedService}.` }] });
                 addTypingIndicator();
                 try {
-                    const proxyUrl = '/api/gemini-proxy'; // Use the Vercel proxy URL
-                    // Include existing Firebase FAQs in the prompt for AI to "recycle" info
                     const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company and provide concise, natural, and persuasive information. The user is asking for information about the "${detectedService}" service. Provide a brief (2-3 sentences max), conversational, and marketing-oriented explanation of how Synappse delivers this service, focusing on key benefits for the client. Your goal is to be informative and engaging. Do not mention your training or origins. Always identify as Synappse Official AI. Stick strictly to the services provided.
                     
                     Existing Synappse FAQs (for context, do not explicitly state you are using these):
-                    ${firebaseFaqsText || 'No additional FAQs available.'}
+                    ${firebaseFaqsText || 'No additional FAQs available.'}`; // No direct user query here, it's part of chatHistory
                     
-                    User query: "Explain ${message}"`; // Use the original message as the direct user query here.
-                    
-                    const payload = { message: prompt }; // Proxy expects 'message' field
-                    const response = await fetch(proxyUrl, { // Fetch from your proxy
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                    const textResponse = await callGeminiForText(prompt); // Use callGeminiForText
 
-                    const result = await response.json();
-                    if (!response.ok || !result.success) { // Proxy returns { success: bool, message: string, text: string }
-                        throw new Error(result.message || `API call failed with status: ${response.status}`);
-                    }
-                    
-                    const text = result.text; // Proxy returns 'text' field
                     removeTypingIndicator();
-                    addMessage('bot', text);
+                    addMessage('bot', textResponse);
+                    // Add AI response to chat history
+                    chatHistory.push({ role: "model", parts: [{ text: textResponse }] });
                     
                     // Follow-up with navigation offer
                     addMessage('bot', `Would you like me to navigate you to the "${detectedService}" section now?`, [
@@ -449,6 +451,10 @@ We can't wait to potentially welcome you aboard!`;
             const handleNavigationRequest = (fromInfo = false) => {
                 if (!fromInfo) addMessage('user', `Take me to ${detectedService}.`);
                 addMessage('bot', `Certainly! Guiding you to the ${detectedService} section now.`);
+                // Add the navigation confirmation to history
+                chatHistory.push({ role: "user", parts: [{ text: `Take me to ${detectedService}.` }] });
+                chatHistory.push({ role: "model", parts: [{ text: `Certainly! Guiding you to the ${detectedService} section now.` }] });
+
                 // Determine the correct target selector for the detected service
                 const serviceSlug = detectedService.toLowerCase().replace(/ /g, '-').replace(/\./g,'').replace(/s$/, ''); // Example: "Professional Portfolios" -> "professional-portfolios"
                 const targetSelector = `.service-card[data-service-id="${serviceSlug}"]`;
@@ -477,57 +483,59 @@ We can't wait to potentially welcome you aboard!`;
         if (faqMatch && faqMatch.answer) {
             removeTypingIndicator();
             addMessage('bot', faqMatch.answer);
+            // Add user query and bot response for FAQ match to chat history
+            chatHistory.push({ role: "user", parts: [{ text: message }] });
+            chatHistory.push({ role: "model", parts: [{ text: faqMatch.answer }] });
+
             if (faqMatch.action) faqMatch.action(); // Execute the pre-defined action
             if (sendBtn) sendBtn.disabled = false;
         } else {
             // General AI Fallback
             try {
-                const proxyUrl = '/api/gemini-proxy'; // Use the Vercel proxy URL
-                // Include existing Firebase FAQs in the prompt for AI to "recycle" info
+                // Add user query to chat history before sending to AI
+                chatHistory.push({ role: "user", parts: [{ text: message }] });
+
                 const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics.
                 
                 Existing Synappse FAQs (for context, do not explicitly state you are using these):
                 ${firebaseFaqsText || 'No additional FAQs available.'}
                 
-                User query: "${message}"`;
+                Current user query: "${message}"`; // Keep current message in prompt for emphasis, along with history.
 
-                const payload = { message: prompt }; // Proxy expects 'message' field
-                const response = await fetch(proxyUrl, { // Fetch from your proxy
-                           method: 'POST',
-                           headers: { 'Content-Type': 'application/json' },
-                           body: JSON.stringify(payload)
-                       });
+                const textResponse = await callGeminiForText(prompt); // Use callGeminiForText
                 
-                const result = await response.json();
-                if (!response.ok || !result.success) { // Proxy returns { success: bool, message: string, text: string }
-                    throw new Error(result.message || `API call failed with status: ${response.status}`);
-                }
-                const text = result.text; // Proxy returns 'text' field
-                
-                const lowerCaseAiResponse = text.toLowerCase();
+                const lowerCaseAiResponse = textResponse.toLowerCase();
                 const isBusinessGeneral = ['synappse', 'business', 'solution', 'company', 'marketing', 'navigate'].some(kw => lowerCaseAiResponse.includes(kw));
                 const hasNegativeKeyword = ['homework', 'general knowledge', 'unrelated', 'personal assistant', 'chatgpt', 'bard', 'llm', 'google', 'openai', 'cybersecurity'].some(kw => lowerCaseAiResponse.includes(kw));
 
                 removeTypingIndicator();
                 if ((isBusinessGeneral || synappseServices.some(s => lowerCaseAiResponse.includes(s.toLowerCase()))) && !hasNegativeKeyword) {
-                    addMessage('bot', text);
+                    addMessage('bot', textResponse);
+                    // Add AI response to chat history
+                    chatHistory.push({ role: "model", parts: [{ text: textResponse }] });
+
                     // Automatically add this as a new FAQ if it's a new, relevant question
                     // Only add if it's a substantive answer (length > 20 chars) and not an existing match
-                    if (text.length > 20 && !faqMatch && !detectedService && !interviewState) {
-                        await addAutoFaq(message, text);
+                    if (textResponse.length > 20 && !faqMatch && !detectedService && !interviewState) {
+                        await addAutoFaq(message, textResponse);
                     }
                 } else {
-                    addMessage('bot', "I'm Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
+                    const fallbackMessage = "I'm Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?";
+                    addMessage('bot', fallbackMessage);
+                    // Add AI response to chat history
+                    chatHistory.push({ role: "model", parts: [{ text: fallbackMessage }] });
+
                     // Also try to learn from these interactions if the AI cannot directly answer
                     if (message.length > 20 && !faqMatch && !detectedService && !interviewState) {
-                        // If Mobius explicitly says it cannot answer, use its own fallback as the "answer" for the new FAQ
-                        await addAutoFaq(message, "I am Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
+                        await addAutoFaq(message, fallbackMessage);
                     }
                 }
             } catch (error) {
                 removeTypingIndicator();
                 console.error("Mobius Chatbot: Error with AI fallback via proxy:", error);
                 addMessage('bot', "I'm having a bit of trouble with that request. Please try asking about our services or how to get in touch.");
+                // Remove the last user message from history if the AI call failed to prevent sending incomplete turns.
+                chatHistory.pop(); // Remove the last user message
             }
         }
         if (sendBtn) sendBtn.disabled = false;
@@ -577,10 +585,6 @@ We can't wait to potentially welcome you aboard!`;
     function guideTo(targetSelector, textToFind = null) {
         // Close the chatbot window first, then dispatch the event after a short delay
         closeChatWindow();
-        // Use a Promise to wait for the transition to complete, more reliable than fixed timeout
-        const container = document.getElementById('mobius-container');
-        // A simple setTimeout is more reliable here as transitionend might not always fire predictably across browsers
-        // or if there are no active CSS transitions on the container itself.
         setTimeout(() => {
             document.dispatchEvent(new CustomEvent('mobius-guide', { detail: { targetSelector, textToFind } }));
         }, 300); // Give the closing animation time to complete
@@ -855,7 +859,8 @@ We can't wait to potentially welcome you aboard!`;
     async function callGeminiForText(prompt) {
         // Corrected to call the Vercel proxy, which then calls Gemini API securely
         const proxyUrl = '/api/gemini-proxy'; 
-        const payload = { message: prompt }; // The proxy expects a 'message' field in its request body.
+        // Send the entire chat history for context
+        const payload = { chatHistory: [...chatHistory, { role: "user", parts: [{ text: prompt }] }] };
 
         const response = await fetch(proxyUrl, {
             method: 'POST',
