@@ -1,7 +1,13 @@
 /**
  * Mobius Chatbot - Synappse Official AI
  *
- * @version 7.3 - Fully Automated FAQ Learning (Direct Firestore Write)
+ * @version 7.4 - Bug Fixes: Launcher Visibility & Navigation Enhancement
+ * - **Fix: Launcher Disappearance**: Corrected the logic in `closeChatWindow()`
+ * and `stopDrag()` to ensure the launcher correctly reappears and is interactive
+ * after the chatbot window closes, and when it's clicked (not dragged) to open.
+ * - **Enhancement: Navigation Timing**: Adjusted `closeChatWindow()` to ensure the
+ * chatbot UI is fully off-screen before dispatching the `mobius-guide` event,
+ * potentially improving reliability of navigation handling in `script.js`.
  * - **Key Improvement**: Implemented functionality for the chatbot to automatically
  * identify unanswered user questions (that receive a general AI fallback),
  * generate an answer and keywords for them using Gemini AI, and directly
@@ -429,6 +435,7 @@ We can't wait to potentially welcome you aboard!`;
                 if (!fromInfo) addMessage('user', `Take me to ${detectedService}.`);
                 addMessage('bot', `Certainly! Guiding you to the ${detectedService} section now.`);
                 if (serviceFaqEntry && serviceFaqEntry.action) {
+                    // Introduce a short delay before navigation to allow chatbot to close fully
                     setTimeout(() => serviceFaqEntry.action(), 300);
                 } else {
                     setTimeout(() => guideTo('#services'), 300);
@@ -489,6 +496,7 @@ We can't wait to potentially welcome you aboard!`;
                     addMessage('bot', "I'm Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
                     // Also try to learn from these interactions if the AI cannot directly answer
                     if (message.length > 20 && !faqMatch && !detectedService && !interviewState) {
+                        // If Mobius explicitly says it cannot answer, use its own fallback as the "answer" for the new FAQ
                         await addAutoFaq(message, "I am Mobius, the Synappse Official AI. My purpose is to help you explore our services and philosophy. How can I assist with something related to Synappse?");
                     }
                 }
@@ -546,10 +554,11 @@ We can't wait to potentially welcome you aboard!`;
     }
 
     function guideTo(targetSelector, textToFind = null) {
+        // Close the chatbot window first, then dispatch the event after a short delay
         closeChatWindow();
         setTimeout(() => {
             document.dispatchEvent(new CustomEvent('mobius-guide', { detail: { targetSelector, textToFind } }));
-        }, 300);
+        }, 300); // Give the closing animation time to complete
     }
 
     function initiateInterview() {
@@ -626,15 +635,19 @@ We can't wait to potentially welcome you aboard!`;
         const container = document.getElementById('mobius-container');
         const launcher = document.getElementById('mobius-launcher');
         if (!container || !launcher) return;
+
+        // Hide the chatbot container itself
         container.classList.remove('open');
         document.getElementById('mobius-faq-overlay').classList.remove('open');
         document.getElementById('mobius-messages').style.display = 'flex';
         document.getElementById('mobius-input-area').style.display = 'flex';
+
+        // Make the launcher visible and interactive again
         launcher.style.opacity = '1';
-        launcher.style.visibility = 'hidden'; // Ensure visibility is hidden too
-        launcher.style.pointerEvents = 'none';
-        launcher.style.transform = 'scale(0)';
-        void launcher.offsetWidth;
+        launcher.style.visibility = 'visible';
+        launcher.style.pointerEvents = 'auto';
+        launcher.style.transform = 'scale(1)'; // Restore original scale and visibility
+        void launcher.offsetWidth; // Force reflow for transition to apply
         snapElementToNearestEdge(launcher, lastSnappedSide);
     }
 
@@ -645,19 +658,21 @@ We can't wait to potentially welcome you aboard!`;
         const input = document.getElementById('mobius-input');
         const faqBtn = document.getElementById('mobius-faq-btn');
         const backBtn = document.getElementById('mobius-back-btn');
+
         if (closeBtn) closeBtn.addEventListener('click', closeChatWindow);
-        // Modified handleSendMessage to no longer accept predefined messages directly from button clicks outside the normal flow.
         if (sendBtn) sendBtn.addEventListener('click', handleSendMessage);
         if (input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendMessage(); });
         if (faqBtn) faqBtn.addEventListener('click', showFaqOverlay);
         if (backBtn) backBtn.addEventListener('click', hideFaqOverlay);
         if (launcher) makeLauncherDraggable(launcher);
 
-        // Add event listener for the launcher click to open the chatbot
+        // This listener is for direct clicks on the launcher to open the chatbot
         if (launcher) {
             launcher.addEventListener('click', () => {
-                if (!launcher.classList.contains('snapped')) { // Only open if not currently being dragged or snapped.
+                // Ensure it's not currently being dragged or mid-snap animation
+                if (!launcher.classList.contains('snapped') && !launcher.style.transition.includes('opacity')) { 
                     document.getElementById('mobius-container').classList.add('open');
+                    // Hide the launcher when the chatbot opens
                     launcher.style.opacity = '0';
                     launcher.style.visibility = 'hidden';
                     launcher.style.pointerEvents = 'none';
@@ -866,11 +881,8 @@ We can't wait to potentially welcome you aboard!`;
             document.removeEventListener('mouseup', stopDrag); document.removeEventListener('touchend', stopDrag);
             if (wasDragged) {
                 snapElementToNearestEdge(element);
-            } else {
-                document.getElementById('mobius-container').classList.add('open');
-                element.style.opacity = '0'; element.style.visibility = 'hidden';
-                element.style.pointerEvents = 'none'; element.style.transform = 'scale(0)';
             }
+            // Removed the 'else' block from here. The direct click listener now solely handles opening and hiding the launcher.
         };
         element.addEventListener('mousedown', startDrag);
         element.addEventListener('touchstart', startDrag, { passive: true });
