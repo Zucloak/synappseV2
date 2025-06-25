@@ -1,0 +1,44 @@
+name: Auto-Obfuscate JS and CSS
+
+on:
+  push:
+    paths:
+      - '**.js'
+      - '**.css'
+
+jobs:
+  obfuscate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install obfuscation tools
+        run: |
+          npm install -g javascript-obfuscator clean-css-cli
+
+      - name: Obfuscate JavaScript and CSS files
+        run: |
+          mkdir -p dist/api
+
+          # Obfuscate JS
+          javascript-obfuscator mobius_chatbot.js --output dist/mobius_chatbot.js
+          javascript-obfuscator script.js --output dist/script.js
+          javascript-obfuscator api/gemini-proxy.js --output dist/api/gemini-proxy.js
+
+          # Minify CSS
+          cleancss -o dist/style.css style.css
+
+      - name: Commit obfuscated files
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add dist/
+          git commit -m "Auto-obfuscated JS and CSS files [skip ci]" || echo "No changes to commit"
+          git push
