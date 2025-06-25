@@ -1,4 +1,4 @@
-// script.js
+// scipt.js
 
 document.addEventListener('DOMContentLoaded', () => {
 
