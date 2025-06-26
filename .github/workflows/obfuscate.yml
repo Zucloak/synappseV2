@@ -35,7 +35,7 @@ jobs:
           javascript-obfuscator script.js --output dist/script.js
           javascript-obfuscator api/gemini-proxy.js --output dist/api/gemini-proxy.js
 
-          # Minify CSS with safe options
+          # Minify CSS with safe options (CORRECT USAGE)
           cleancss --keep-special-comments '*' --compatibility '*' --skip-rebase -o dist/style.css style.css
 
       - name: Commit obfuscated files
