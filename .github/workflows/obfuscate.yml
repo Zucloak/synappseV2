@@ -30,18 +30,19 @@ jobs:
         run: |
           mkdir -p dist
           find . -name '*.js' ! -path './dist/*' ! -path './node_modules/*' -print0 | while IFS= read -r -d '' file; do
-            # Make corresponding output path under dist/
             out="dist/${file#./}"
             mkdir -p "$(dirname "$out")"
             javascript-obfuscator "$file" --output "$out"
           done
 
-      - name: Minify CSS
+      - name: Minify all CSS files
         run: |
           mkdir -p dist
-          if [ -f style.css ]; then
-            cleancss --keep-special-comments '*' --compatibility '*' --skip-rebase -o dist/style.css style.css
-          fi
+          find . -name '*.css' ! -path './dist/*' ! -path './node_modules/*' -print0 | while IFS= read -r -d '' file; do
+            out="dist/${file#./}"
+            mkdir -p "$(dirname "$out")"
+            cleancss --skip-rebase -o "$out" "$file"
+          done
 
       - name: Commit obfuscated files
         env:
