@@ -1,6 +1,6 @@
 /**
  * Mobius Chatbot - Synappse Official AI
- * 
+ * updated
  * @version 7.1 - Vercel Proxy Integration
  * - **Key Improvement**: Rerouted all Gemini API calls through a Vercel serverless function (`/api/gemini-proxy`).
  * - **Security**: Removed the client-side `GEMINI_API_KEY`. The API key is now securely stored as an environment variable on Vercel, protecting it from browser exposure.
