@@ -6,6 +6,9 @@ on:
       - '**/*.js'
       - '**/*.css'
 
+permissions:
+  contents: write
+
 jobs:
   obfuscate:
     runs-on: ubuntu-latest
