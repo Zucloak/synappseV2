@@ -1,6 +1,6 @@
 /**
  * Mobius Chatbot - Synappse Official AI
- *
+ * WARNING! Do not De-Obfuscate, Doing so and distributing it will Violate the international Law of Copyright!
  * @version 7.2 - Secure Firebase Config Loading
  * - **Key Improvement**: Firebase configuration is no longer hardcoded in this file. It is now fetched from a secure Vercel serverless function (`/api/firebase-config-proxy`).
  * - **Security**: The Firebase config values are stored as environment variables on Vercel, protecting them from being exposed in the client-side source code.
