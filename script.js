@@ -1,5 +1,5 @@
 // test script.js 
-//Do not De-Obfuscate, Doing so and distributing it will Violate the international Law of Copyright!
+//WARNING! Do not De-Obfuscate, Doing so and distributing it will Violate the international Law of Copyright!
 
 document.addEventListener('DOMContentLoaded', () => {
 
