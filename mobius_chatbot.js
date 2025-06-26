@@ -1,11 +1,10 @@
 /**
  * Mobius Chatbot - Synappse Official AI
- * updated
- * @version 7.1 - Vercel Proxy Integration
- * - **Key Improvement**: Rerouted all Gemini API calls through a Vercel serverless function (`/api/gemini-proxy`).
- * - **Security**: Removed the client-side `GEMINI_API_KEY`. The API key is now securely stored as an environment variable on Vercel, protecting it from browser exposure.
- * - **Optimization**: Aligned client-side `fetch` requests with the expected payload and response structure of the new proxy function.
- * - **Follow-up Action**: Maintained the seamless user journey where Mobius offers to navigate after providing information.
+ *
+ * @version 7.2 - Secure Firebase Config Loading
+ * - **Key Improvement**: Firebase configuration is no longer hardcoded in this file. It is now fetched from a secure Vercel serverless function (`/api/firebase-config-proxy`).
+ * - **Security**: The Firebase config values are stored as environment variables on Vercel, protecting them from being exposed in the client-side source code.
+ * - **Refactor**: The chatbot's initialization logic is now asynchronous. It waits for the Firebase config to be fetched before initializing the Firebase SDK and attaching listeners that depend on it.
  * @author Synappse
  */
 
@@ -14,29 +13,65 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
+// This is the main entry point, triggered after the HTML document is fully loaded.
+document.addEventListener('DOMContentLoaded', async () => {
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Firebase Configuration
-    const firebaseConfig = {
-        apiKey: "AIzaSyDNuLjTJWm5z00TLWvaMa8CUUQngPsqqN4", // Firebase API Key (client-side safe)
-        authDomain: "mobius-ai-805b9.firebaseapp.com",
-        projectId: "mobius-ai-805b9",
-        storageBucket: "mobius-ai-805b9.firebasestorage.app",
-        messagingSenderId: "192830895272",
-        appId: "1:192830895272:web:ced3c55afc174e88c5be9d",
-        measurementId: "G-S9DJGFXWPK"
-    };
+    // --- Step 1: Immediately build the chatbot's UI ---
+    // This provides instant visual feedback to the user while we handle setup in the background.
+    injectMetaViewport();
+    injectStyles();
+    createChatbotHTML();
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const analytics = getAnalytics(app);
+    // --- Step 2: Asynchronously fetch the secure configuration and initialize the bot ---
+    try {
+        // Fetch the Firebase config from our new secure serverless function.
+        const response = await fetch('/api/firebase-config-proxy');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Failed to fetch Firebase config: ${response.status} - ${errorData.message || 'Server error'}`);
+        }
+        const firebaseConfig = await response.json();
 
-    // Cooldown period in milliseconds to prevent API spam
+        // Initialize Firebase with the fetched configuration
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        getAnalytics(app); // Initialize analytics
+
+        // --- Step 3: Now that Firebase is ready, activate the full chatbot functionality ---
+        // We pass the 'db' instance to the main logic controller.
+        initializeFullChatbot(db);
+
+    } catch (error) {
+        // --- Error Handling ---
+        // If fetching the config or initializing Firebase fails, the chatbot cannot function.
+        // We log the error and update the UI to inform the user.
+        console.error("Mobius Chatbot: CRITICAL ERROR - Could not initialize.", error);
+        
+        // Visually disable the chatbot UI
+        const launcher = document.getElementById('mobius-launcher');
+        if (launcher) launcher.style.display = 'none'; // Hide the launcher icon
+
+        const container = document.getElementById('mobius-container');
+        if (container) { // If the widget is already open, show an error state
+            container.classList.add('open');
+            const messages = document.getElementById('mobius-messages');
+            if(messages) messages.innerHTML = '<div class="mobius-message bot">Sorry, I am currently unable to connect. Please try again later.</div>';
+            const inputArea = document.getElementById('mobius-input-area');
+            if(inputArea) inputArea.style.display = 'none';
+        }
+    }
+});
+
+
+/**
+ * Contains all the live functionality of the chatbot.
+ * This function is only called AFTER a successful Firebase connection.
+ * @param {object} db - The initialized Firestore database instance.
+ */
+function initializeFullChatbot(db) {
+    // --- State & Constants ---
     const COOLDOWN_PERIOD = 3000; // 3 seconds
-
-    // --- Dynamic Interview State Management ---
-    let interviewState = null; // Can be null, 'pending_confirmation', or 'active'
+    let interviewState = null;
     let interviewProgress = 0;
     const interviewQuestionPools = [
         // Pool 1: Passion & Creativity
@@ -94,7 +129,6 @@ Please send an email to **synpps@gmail.com** with the subject line 'Aspiring Syn
 
 We can't wait to potentially welcome you aboard!`;
 
-    // --- Fully Interactive FAQ Map with unique keys ---
     const FAQ = new Map([
         ['hiring_intent', {
             keywords: ['hire', 'hired', 'join', 'job', 'work for', 'career', 'recruiting', 'recruitment', 'interview', 'apply', 'applying', 'employment', 'position', 'opportunity'],
@@ -111,26 +145,11 @@ We can't wait to potentially welcome you aboard!`;
             answer: "We craft a wide range of digital assets. I'll take you to the services section now. Feel free to ask me to highlight a specific one!",
             action: () => guideTo('#services')
         }],
-        ['philosophy_general', {
-            keywords: ['philosophy', 'ethos', 'believe'],
-            answer: "Our philosophy is the SYNAPPSE Ethos. I'll guide you to that section so you can see our core principles.",
-            action: () => guideTo('#about')
-        }],
-        ['contact_general', {
-            keywords: ['contact', 'get in touch', 'email', 'book', 'request service'],
-            answer: "You can get in touch with us using the contact form at the bottom of the page. Let me take you there!",
-            action: () => guideTo('#cta')
-        }],
-        ['achievements_general', {
-            keywords: ['achievements', 'credentials', 'badges', 'trustworthy'],
-            answer: "Our credentials from Google are a testament to our expertise. Let me show you the achievements section.",
-            action: () => guideTo('#achievements')
-        }],
-        ['show_example_service', {
-            keywords: ['show me a service', 'example of a service', 'show service'],
-            answer: "Of course! Here is one of our most popular services: Professional Portfolios.",
-            action: () => guideTo('.service-card[data-service-id="professional-portfolios"]')
-        }],
+        // ... (rest of the FAQ map remains the same)
+        ['philosophy_general', { keywords: ['philosophy', 'ethos', 'believe'], answer: "Our philosophy is the SYNAPPSE Ethos. I'll guide you to that section so you can see our core principles.", action: () => guideTo('#about') }],
+        ['contact_general', { keywords: ['contact', 'get in touch', 'email', 'book', 'request service'], answer: "You can get in touch with us using the contact form at the bottom of the page. Let me take you there!", action: () => guideTo('#cta') }],
+        ['achievements_general', { keywords: ['achievements', 'credentials', 'badges', 'trustworthy'], answer: "Our credentials from Google are a testament to our expertise. Let me show you the achievements section.", action: () => guideTo('#achievements') }],
+        ['show_example_service', { keywords: ['show me a service', 'example of a service', 'show service'], answer: "Of course! Here is one of our most popular services: Professional Portfolios.", action: () => guideTo('.service-card[data-service-id="professional-portfolios"]') }],
         ['service_personal_website', { keywords: ['personal website', 'static website'], action: () => guideTo('.service-card[data-service-id="personal-websites"]') }],
         ['service_portfolio', { keywords: ['portfolio'], action: () => guideTo('.service-card[data-service-id="professional-portfolios"]') }],
         ['service_social_media', { keywords: ['social media design'], action: () => guideTo('.service-card[data-service-id="social-media-designs"]') }],
@@ -156,154 +175,12 @@ We can't wait to potentially welcome you aboard!`;
         }]
     ]);
 
-    // Store Firebase FAQs separately
-    let firebaseFaqs = new Map();
-
-    // Defined list of actual services offered by Synappse for strict AI prompting
     const synappseServices = ["Professional Portfolios", "Personal Static Websites", "Social Media Designs", "Birthday Sites", "Gamified Review Materials", "Business Logos", "Website Gifts", "3D Product Models", "Animated Group Sites", "Countdown Calendars", "AI Integration", "On-site Computer Services", "Materials Printing", "Email Management", "Market Research", "Custom Systems and Software Development"];
-
+    let firebaseFaqs = new Map();
     let lastMessageTimestamp = 0;
     let lastSnappedSide = 'right';
 
-    async function initializeChatbot() {
-        injectMetaViewport();
-        injectStyles();
-        createChatbotHTML();
-
-        setTimeout(() => {
-            const launcher = document.getElementById('mobius-launcher');
-            if (launcher) {
-                launcher.style.display = 'flex';
-                launcher.style.opacity = '1';
-                launcher.style.visibility = 'visible';
-                launcher.style.pointerEvents = 'auto';
-                launcher.style.transition = 'none';
-                snapElementToNearestEdge(launcher, 'right', false);
-                void launcher.offsetWidth;
-                launcher.style.transition = '';
-                attachEventListeners();
-            } else {
-                console.error("Mobius Chatbot: ERROR - Launcher element not found after HTML injection.");
-            }
-        }, 50);
-
-        listenToFirebaseFaqs();
-    }
-
-    function injectMetaViewport() {
-        if (!document.querySelector('meta[name="viewport"]')) {
-            const viewportMetaTag = document.createElement('meta');
-            viewportMetaTag.name = 'viewport';
-            viewportMetaTag.content = 'width=device-width, initial-scale=1.0';
-            document.head.appendChild(viewportMetaTag);
-        }
-    }
-
-    function injectStyles() {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            :root {
-                --mobius-primary: #6A0DAD;
-                --mobius-secondary: #0a0a0a;
-                --mobius-accent: #e3c41b;
-                --mobius-text: #f0f0f0;
-                --mobius-user-bg: #333;
-            }
-            #mobius-launcher {
-                position: fixed; z-index: 10000; cursor: grab; user-select: none; pointer-events: auto;
-                background: var(--mobius-accent); display: flex; justify-content: center; align-items: center;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-                transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
-                width: 70px; height: 70px; border-radius: 50%;
-            }
-            #mobius-launcher i { color: #f6f5f7; font-size: 28px; transition: transform 0.3s ease; pointer-events: none; }
-            #mobius-launcher.snapped { width: 50px; height: 70px; }
-            #mobius-launcher.snapped-left { border-radius: 0 35px 35px 0; }
-            #mobius-launcher.snapped-right { border-radius: 35px 0 0 35px; }
-            #mobius-container {
-                position: fixed; bottom: 20px; right: 20px; z-index: 9999;
-                transform: scale(0.8) translateY(20px); opacity: 0; visibility: hidden;
-                transform-origin: bottom right; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s;
-            }
-            #mobius-container.open { transform: scale(1) translateY(0); opacity: 1; visibility: visible; }
-            #mobius-widget { width: 350px; max-width: 90vw; height: 500px; max-height: 80vh; background-color: var(--mobius-secondary); border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; }
-            #mobius-header { padding: 15px; background: linear-gradient(45deg, var(--mobius-primary), #4B0082); color: var(--mobius-text); position: relative; display: flex; justify-content: space-between; align-items: center; border-radius: 15px 15px 0 0; }
-            #mobius-header h3 { margin: 0; font-size: 1.2em; color: white; }
-            #mobius-header p { margin: 0; font-size: 0.8em; opacity: 0.8; }
-            #mobius-close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--mobius-text); font-size: 2em; cursor: pointer; }
-            #mobius-faq-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.9em; transition: background 0.2s ease; margin-right: 20px; }
-            #mobius-faq-btn:hover { background: rgba(255,255,255,0.2); }
-            #firebase-status { display: flex; align-items: center; gap: 5px; font-size: 0.75em; color: rgba(255,255,255,0.7); margin-left: 10px; }
-            #firebase-status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: grey; }
-            #firebase-status-dot.connected { background-color: #4CAF50; }
-            #firebase-status-dot.error { background-color: #F44336; }
-            #mobius-messages { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
-            #mobius-messages::-webkit-scrollbar { width: 5px; }
-            #mobius-messages::-webkit-scrollbar-thumb { background: var(--mobius-primary); border-radius: 5px; }
-            .mobius-message { max-width: 80%; padding: 10px 15px; border-radius: 15px; margin-bottom: 10px; line-height: 1.4; animation: fadeIn 0.3s ease; white-space: pre-wrap; word-wrap: break-word; }
-            .mobius-message.user { background-color: var(--mobius-user-bg); color: var(--mobius-text); align-self: flex-end; border-bottom-right-radius: 3px; }
-            .mobius-message.bot { background-color: #222; color: var(--mobius-text); align-self: flex-start; border-bottom-left-radius: 3px; }
-            .mobius-message b, .mobius-message strong { color: var(--mobius-accent); }
-            .mobius-message.bot.typing-indicator span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--mobius-accent); animation: typing 1s infinite; }
-            .mobius-message.bot.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-            .mobius-message.bot.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-            .mobius-message-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-            .mobius-message-options button { background-color: var(--mobius-primary); color: var(--mobius-text); border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: background-color 0.2s ease; }
-            .mobius-message-options button:hover:not(:disabled) { background-color: #8a2be2; }
-            .mobius-message-options button:disabled { background-color: #555; opacity: 0.7; cursor: not-allowed; }
-            #mobius-input-area { padding: 15px; border-top: 1px solid #333; display: flex; }
-            #mobius-input { flex-grow: 1; background-color: #333; border: 1px solid #444; border-radius: 20px; padding: 10px 15px; color: var(--mobius-text); outline: none; font-size: 16px; }
-            #mobius-input:focus { border-color: var(--mobius-primary); }
-            #mobius-send-btn { background: none; border: none; color: var(--mobius-primary); font-size: 2em; margin-left: 10px; padding: 5px 10px; cursor: pointer; transition: color 0.3s; border-radius: 20px; min-width: 40px; display: flex; justify-content: center; align-items: center; }
-            #mobius-send-btn:hover, #mobius-send-btn:disabled { color: var(--mobius-accent); }
-            #mobius-send-btn:disabled { cursor: not-allowed; opacity: 0.5; }
-            #mobius-faq-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--mobius-secondary); border-radius: 15px; display: flex; flex-direction: column; visibility: hidden; opacity: 0; transition: opacity 0.3s ease, visibility 0.3s ease; }
-            #mobius-faq-overlay.open { visibility: visible; opacity: 1; }
-            #mobius-faq-header { padding: 15px; background: #222; color: var(--mobius-text); display: flex; align-items: center; gap: 10px; border-radius: 15px 15px 0 0; position: relative; }
-            #mobius-faq-header h4 { margin: 0; font-size: 1.1em; color: white; }
-            #mobius-back-btn { background: none; border: none; color: var(--mobius-text); font-size: 1.5em; cursor: pointer; padding: 0 5px; }
-            #mobius-faq-list { flex-grow: 1; padding: 15px; overflow-y: auto; }
-            #mobius-faq-list .realtime-indicator-container { text-align: center; margin-bottom: 15px; color: #aaa; font-size: 0.75em; }
-            #mobius-faq-list .realtime-indicator-container .realtime-dot { display: inline-block; width: 6px; height: 6px; background-color: #4CAF50; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
-            .mobius-faq-item { background-color: #222; color: var(--mobius-text); padding: 12px 15px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; transition: background-color 0.2s ease; }
-            .mobius-faq-item:hover { background-color: #333; }
-            .mobius-text-highlight { background-color: rgba(255, 215, 0, 0.4); padding: 0.1em 0.2em; border-radius: 4px; box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
-        `;
-        document.head.appendChild(style);
-    }
-
-    function createChatbotHTML() {
-        if (!document.querySelector('link[href*="font-awesome"]')) {
-            const fontAwesomeLink = document.createElement('link');
-            fontAwesomeLink.rel = 'stylesheet';
-            fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
-            document.head.appendChild(fontAwesomeLink);
-        }
-        const launcherHTML = `<div id="mobius-launcher"><i class="fas fa-robot"></i></div>`;
-        const widgetContainerHTML = `
-            <div id="mobius-container">
-                <div id="mobius-widget">
-                    <div id="mobius-header">
-                        <div><h3>Mobius</h3><p>Synappse Official AI</p></div>
-                        <div id="firebase-status"><span id="firebase-status-dot"></span><span id="firebase-status-text"></span></div>
-                        <button id="mobius-faq-btn">FAQs</button>
-                        <button id="mobius-close-btn">&times;</button>
-                    </div>
-                    <div id="mobius-messages"><div class="mobius-message bot">Hello! I'm Mobius. How can I help you explore our digital craft today?</div></div>
-                    <div id="mobius-input-area">
-                        <input type="text" id="mobius-input" placeholder="Ask about a service..."><button id="mobius-send-btn"><i class="fas fa-paper-plane"></i></button>
-                    </div>
-                    <div id="mobius-faq-overlay">
-                        <div id="mobius-faq-header"><button id="mobius-back-btn"><i class="fas fa-arrow-left"></i></button><h4>Frequently Asked Questions</h4></div>
-                        <div id="mobius-faq-list"></div>
-                    </div>
-                </div>
-            </div>`;
-        document.body.insertAdjacentHTML('beforeend', launcherHTML);
-        document.body.insertAdjacentHTML('beforeend', widgetContainerHTML);
-    }
+    // --- Core Functions ---
 
     function handleSendMessage() {
         const input = document.getElementById('mobius-input');
@@ -326,12 +203,9 @@ We can't wait to potentially welcome you aboard!`;
         addTypingIndicator();
 
         const lowerCaseMessage = typeof message === 'string' ? message.toLowerCase() : '';
-
-        // --- Intent Detection & State Handling ---
         const hiringIntentKeywords = FAQ.get('hiring_intent').keywords;
         const isHiringQuery = hiringIntentKeywords.some(keyword => lowerCaseMessage.includes(keyword));
 
-        // --- Step 1: Prioritize Interview Flow ---
         if (isHiringQuery && !interviewState) {
             removeTypingIndicator();
             initiateInterview();
@@ -345,7 +219,6 @@ We can't wait to potentially welcome you aboard!`;
             return;
         }
 
-        // --- Step 2: Detect if a specific service is mentioned ---
         let detectedService = null;
         let serviceFaqEntry = null;
 
@@ -360,10 +233,8 @@ We can't wait to potentially welcome you aboard!`;
             }
         }
 
-        // --- Step 3: Handle Service-Specific Queries with Clarification ---
         if (detectedService) {
             removeTypingIndicator();
-            
             const handleInfoRequest = async () => {
                 addMessage('user', `Tell me more about ${detectedService}.`);
                 addTypingIndicator();
@@ -387,7 +258,6 @@ We can't wait to potentially welcome you aboard!`;
                     removeTypingIndicator();
                     addMessage('bot', text);
                     
-                    // Follow-up with navigation offer
                     addMessage('bot', `Would you like me to navigate you to the "${detectedService}" section now?`, [
                         { text: 'Yes, take me there', handler: () => handleNavigationRequest(true) },
                         { text: 'No, thanks', handler: () => { addMessage('user', 'No, thanks.'); addMessage('bot', 'Alright! What else can I help you with?'); }}
@@ -419,7 +289,6 @@ We can't wait to potentially welcome you aboard!`;
             return;
         }
 
-        // --- Step 4: Handle General FAQ or Fallback to AI ---
         let faqMatch = FAQ.get(message) || getFaqAnswerByKeyword(message, FAQ) || getFaqAnswerByKeyword(message, firebaseFaqs);
 
         if (faqMatch && faqMatch.answer) {
@@ -427,7 +296,6 @@ We can't wait to potentially welcome you aboard!`;
             addMessage('bot', faqMatch.answer);
             if (faqMatch.action) setTimeout(() => faqMatch.action(), 300);
         } else {
-            // General AI Fallback
             try {
                 const proxyUrl = '/api/gemini-proxy';
                 const prompt = `You are Mobius, the official AI of Synappse. Your primary function is to market the company, provide concise information, and assist navigation. You MUST ONLY discuss services from this list: ${synappseServices.join(', ')}. Do NOT invent services. You MUST NOT disclose your training by Google. If a question is outside the scope of Synappse's business, politely decline and redirect to Synappse-related topics. User query: "${message}"`;
@@ -459,6 +327,8 @@ We can't wait to potentially welcome you aboard!`;
         }
         if (sendBtn) sendBtn.disabled = false;
     }
+    
+    // --- Helper & UI Functions ---
 
     function addMessage(sender, text, options = []) {
         if (text === null || typeof text === 'undefined') return;
@@ -490,8 +360,6 @@ We can't wait to potentially welcome you aboard!`;
         }
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
-
-    // --- All other helper functions (getFaqAnswerByKeyword, guideTo, interview logic, UI handlers, etc.) remain below ---
 
     function getFaqAnswerByKeyword(message, faqMap) {
         const lowerCaseMessage = message.toLowerCase();
@@ -650,8 +518,9 @@ We can't wait to potentially welcome you aboard!`;
             faqList.appendChild(faqItem);
         });
     }
-
-    async function listenToFirebaseFaqs() {
+    
+    // MODIFIED to accept db instance
+    async function listenToFirebaseFaqs(db) {
         const statusDot = document.getElementById('firebase-status-dot');
         const statusText = document.getElementById('firebase-status-text');
         if (statusText) statusText.textContent = 'Connecting...';
@@ -751,5 +620,138 @@ We can't wait to potentially welcome you aboard!`;
         if (!animate) { void element.offsetWidth; element.style.transition = ''; }
     }
 
-    initializeChatbot();
-});
+
+    // --- Now, activate the bot ---
+    attachEventListeners();
+    listenToFirebaseFaqs(db);
+    
+    const launcher = document.getElementById('mobius-launcher');
+    if (launcher) {
+        launcher.style.display = 'flex';
+        setTimeout(() => {
+            launcher.style.opacity = '1';
+            launcher.style.visibility = 'visible';
+            launcher.style.pointerEvents = 'auto';
+            launcher.style.transition = 'none';
+            snapElementToNearestEdge(launcher, 'right', false);
+            void launcher.offsetWidth;
+            launcher.style.transition = '';
+        }, 50);
+    }
+}
+
+// --- UI Rendering Functions (No Firebase dependency) ---
+function injectMetaViewport() {
+    if (!document.querySelector('meta[name="viewport"]')) {
+        const viewportMetaTag = document.createElement('meta');
+        viewportMetaTag.name = 'viewport';
+        viewportMetaTag.content = 'width=device-width, initial-scale=1.0';
+        document.head.appendChild(viewportMetaTag);
+    }
+}
+
+function injectStyles() {
+    const style = document.createElement('style');
+    style.innerHTML = `
+        :root {
+            --mobius-primary: #6A0DAD;
+            --mobius-secondary: #0a0a0a;
+            --mobius-accent: #e3c41b;
+            --mobius-text: #f0f0f0;
+            --mobius-user-bg: #333;
+        }
+        #mobius-launcher {
+            position: fixed; z-index: 10000; cursor: grab; user-select: none; pointer-events: auto;
+            background: var(--mobius-accent); display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+            width: 70px; height: 70px; border-radius: 50%; display: none; /* Initially hidden */
+        }
+        #mobius-launcher i { color: #f6f5f7; font-size: 28px; transition: transform 0.3s ease; pointer-events: none; }
+        #mobius-launcher.snapped { width: 50px; height: 70px; }
+        #mobius-launcher.snapped-left { border-radius: 0 35px 35px 0; }
+        #mobius-launcher.snapped-right { border-radius: 35px 0 0 35px; }
+        #mobius-container {
+            position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+            transform: scale(0.8) translateY(20px); opacity: 0; visibility: hidden;
+            transform-origin: bottom right; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s;
+        }
+        #mobius-container.open { transform: scale(1) translateY(0); opacity: 1; visibility: visible; }
+        #mobius-widget { width: 350px; max-width: 90vw; height: 500px; max-height: 80vh; background-color: var(--mobius-secondary); border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; }
+        #mobius-header { padding: 15px; background: linear-gradient(45deg, var(--mobius-primary), #4B0082); color: var(--mobius-text); position: relative; display: flex; justify-content: space-between; align-items: center; border-radius: 15px 15px 0 0; }
+        #mobius-header h3 { margin: 0; font-size: 1.2em; color: white; }
+        #mobius-header p { margin: 0; font-size: 0.8em; opacity: 0.8; }
+        #mobius-close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--mobius-text); font-size: 2em; cursor: pointer; }
+        #mobius-faq-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.9em; transition: background 0.2s ease; margin-right: 20px; }
+        #mobius-faq-btn:hover { background: rgba(255,255,255,0.2); }
+        #firebase-status { display: flex; align-items: center; gap: 5px; font-size: 0.75em; color: rgba(255,255,255,0.7); margin-left: 10px; }
+        #firebase-status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: grey; }
+        #firebase-status-dot.connected { background-color: #4CAF50; }
+        #firebase-status-dot.error { background-color: #F44336; }
+        #mobius-messages { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
+        #mobius-messages::-webkit-scrollbar { width: 5px; }
+        #mobius-messages::-webkit-scrollbar-thumb { background: var(--mobius-primary); border-radius: 5px; }
+        .mobius-message { max-width: 80%; padding: 10px 15px; border-radius: 15px; margin-bottom: 10px; line-height: 1.4; animation: fadeIn 0.3s ease; white-space: pre-wrap; word-wrap: break-word; }
+        .mobius-message.user { background-color: var(--mobius-user-bg); color: var(--mobius-text); align-self: flex-end; border-bottom-right-radius: 3px; }
+        .mobius-message.bot { background-color: #222; color: var(--mobius-text); align-self: flex-start; border-bottom-left-radius: 3px; }
+        .mobius-message b, .mobius-message strong { color: var(--mobius-accent); }
+        .mobius-message.bot.typing-indicator span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--mobius-accent); animation: typing 1s infinite; }
+        .mobius-message.bot.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .mobius-message.bot.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        .mobius-message-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .mobius-message-options button { background-color: var(--mobius-primary); color: var(--mobius-text); border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: background-color 0.2s ease; }
+        .mobius-message-options button:hover:not(:disabled) { background-color: #8a2be2; }
+        .mobius-message-options button:disabled { background-color: #555; opacity: 0.7; cursor: not-allowed; }
+        #mobius-input-area { padding: 15px; border-top: 1px solid #333; display: flex; }
+        #mobius-input { flex-grow: 1; background-color: #333; border: 1px solid #444; border-radius: 20px; padding: 10px 15px; color: var(--mobius-text); outline: none; font-size: 16px; }
+        #mobius-input:focus { border-color: var(--mobius-primary); }
+        #mobius-send-btn { background: none; border: none; color: var(--mobius-primary); font-size: 2em; margin-left: 10px; padding: 5px 10px; cursor: pointer; transition: color 0.3s; border-radius: 20px; min-width: 40px; display: flex; justify-content: center; align-items: center; }
+        #mobius-send-btn:hover, #mobius-send-btn:disabled { color: var(--mobius-accent); }
+        #mobius-send-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+        #mobius-faq-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--mobius-secondary); border-radius: 15px; display: flex; flex-direction: column; visibility: hidden; opacity: 0; transition: opacity 0.3s ease, visibility 0.3s ease; }
+        #mobius-faq-overlay.open { visibility: visible; opacity: 1; }
+        #mobius-faq-header { padding: 15px; background: #222; color: var(--mobius-text); display: flex; align-items: center; gap: 10px; border-radius: 15px 15px 0 0; position: relative; }
+        #mobius-faq-header h4 { margin: 0; font-size: 1.1em; color: white; }
+        #mobius-back-btn { background: none; border: none; color: var(--mobius-text); font-size: 1.5em; cursor: pointer; padding: 0 5px; }
+        #mobius-faq-list { flex-grow: 1; padding: 15px; overflow-y: auto; }
+        #mobius-faq-list .realtime-indicator-container { text-align: center; margin-bottom: 15px; color: #aaa; font-size: 0.75em; }
+        #mobius-faq-list .realtime-indicator-container .realtime-dot { display: inline-block; width: 6px; height: 6px; background-color: #4CAF50; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+        .mobius-faq-item { background-color: #222; color: var(--mobius-text); padding: 12px 15px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; transition: background-color 0.2s ease; }
+        .mobius-faq-item:hover { background-color: #333; }
+        .mobius-text-highlight { background-color: rgba(255, 215, 0, 0.4); padding: 0.1em 0.2em; border-radius: 4px; box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+    `;
+    document.head.appendChild(style);
+}
+
+function createChatbotHTML() {
+    if (!document.querySelector('link[href*="font-awesome"]')) {
+        const fontAwesomeLink = document.createElement('link');
+        fontAwesomeLink.rel = 'stylesheet';
+        fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
+        document.head.appendChild(fontAwesomeLink);
+    }
+    const launcherHTML = `<div id="mobius-launcher"><i class="fas fa-robot"></i></div>`;
+    const widgetContainerHTML = `
+        <div id="mobius-container">
+            <div id="mobius-widget">
+                <div id="mobius-header">
+                    <div><h3>Mobius</h3><p>Synappse Official AI</p></div>
+                    <div id="firebase-status"><span id="firebase-status-dot"></span><span id="firebase-status-text"></span></div>
+                    <button id="mobius-faq-btn">FAQs</button>
+                    <button id="mobius-close-btn">&times;</button>
+                </div>
+                <div id="mobius-messages"><div class="mobius-message bot">Hello! I'm Mobius. How can I help you explore our digital craft today?</div></div>
+                <div id="mobius-input-area">
+                    <input type="text" id="mobius-input" placeholder="Ask about a service..."><button id="mobius-send-btn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+                <div id="mobius-faq-overlay">
+                    <div id="mobius-faq-header"><button id="mobius-back-btn"><i class="fas fa-arrow-left"></i></button><h4>Frequently Asked Questions</h4></div>
+                    <div id="mobius-faq-list"></div>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', launcherHTML);
+    document.body.insertAdjacentHTML('beforeend', widgetContainerHTML);
+}
