@@ -1,4 +1,4 @@
-// script.js
+// test script.js
 
 document.addEventListener('DOMContentLoaded', () => {
 
