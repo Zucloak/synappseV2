@@ -1,6 +1,6 @@
 /**
- *  Mobius Chatbot - Synappse Official AI
- * WARNING! Do not De-Obfuscate, Doing so and distributing it will Violate the international Law of Copyright!
+ * Mobius Chatbot - Synappse Official AI
+ * 
  * @version 7.1 - Vercel Proxy Integration
  * - **Key Improvement**: Rerouted all Gemini API calls through a Vercel serverless function (`/api/gemini-proxy`).
  * - **Security**: Removed the client-side `GEMINI_API_KEY`. The API key is now securely stored as an environment variable on Vercel, protecting it from browser exposure.
@@ -147,8 +147,8 @@ We can't wait to potentially welcome you aboard!`;
         ['service_email_management', { keywords: ['email management'], action: () => guideTo('.service-card[data-service-id="email-management"]') }],
         ['service_market_research', { keywords: ['market research'], action: () => guideTo('.service-card[data-service-id="market-research"]') }],
         ['custom_systems', {
-            keywords: ['system', 'systems', 'develop systems', 'create systems', 'system development', 'custom system', 'build system', 'system solutions', 'system', 'develop solutions'],
-            answer: "Yes, Synappse offers cutting-edge custom system and system development. We architect bespoke solutions tailored precisely to your business needs, optimizing workflows and driving innovation. From concept to deployment, we ensure your software empowers your growth. Please use the 'Get in Touch Now!' button for a detailed consultation to discuss how we can build your next big thing!"
+            keywords: ['system', 'systems', 'develop systems', 'create systems', 'software development', 'custom software', 'build software', 'software solutions', 'software', 'develop solutions'],
+            answer: "Yes, Synappse offers cutting-edge custom system and software development. We architect bespoke solutions tailored precisely to your business needs, optimizing workflows and driving innovation. From concept to deployment, we ensure your software empowers your growth. Please use the 'Get in Touch Now!' button for a detailed consultation to discuss how we can build your next big thing!"
         }],
         ['about_mobius', {
             keywords: ['about you', 'who are you', 'who is it', 'what are you', 'your name', 'who is mobius', 'are you mobius', 'what is mobius', 'tell me about yourself', 'your identity', 'are you google', 'trained by google', 'by google', 'who created you', 'who developed you', 'your origin', 'so you are', 'who makes you', 'who are you?', 'what are you?', 'tell me who you are', 'your identity?', 'who made you', 'who built you', 'what is your purpose', 'what is your function', 'you are', 'you are>', 'who you are', 'your creator', 'who is your creator', 'your background', 'what about you', 'are you an ai', 'are you a bot', 'are you a chatbot', 'are you an artificial intelligence', 'what kind of ai are you', 'who developed this'],
