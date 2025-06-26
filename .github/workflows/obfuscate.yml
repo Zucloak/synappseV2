@@ -26,17 +26,22 @@ jobs:
         run: |
           npm install -g javascript-obfuscator clean-css-cli
 
-      - name: Obfuscate JavaScript and CSS files
+      - name: Obfuscate all JavaScript files
         run: |
-          mkdir -p dist/api
+          mkdir -p dist
+          find . -name '*.js' ! -path './dist/*' ! -path './node_modules/*' -print0 | while IFS= read -r -d '' file; do
+            # Make corresponding output path under dist/
+            out="dist/${file#./}"
+            mkdir -p "$(dirname "$out")"
+            javascript-obfuscator "$file" --output "$out"
+          done
 
-          # Obfuscate JS
-          javascript-obfuscator mobius_chatbot.js --output dist/mobius_chatbot.js
-          javascript-obfuscator script.js --output dist/script.js
-          javascript-obfuscator api/gemini-proxy.js --output dist/api/gemini-proxy.js
-
-          # Minify CSS with safe options (CORRECT USAGE)
-          cleancss --keep-special-comments '*' --compatibility '*' --skip-rebase -o dist/style.css style.css
+      - name: Minify CSS
+        run: |
+          mkdir -p dist
+          if [ -f style.css ]; then
+            cleancss --keep-special-comments '*' --compatibility '*' --skip-rebase -o dist/style.css style.css
+          fi
 
       - name: Commit obfuscated files
         env:
