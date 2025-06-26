@@ -41,7 +41,7 @@ jobs:
           find . -name '*.css' ! -path './dist/*' ! -path './node_modules/*' -print0 | while IFS= read -r -d '' file; do
             out="dist/${file#./}"
             mkdir -p "$(dirname "$out")"
-            cleancss --skip-rebase -o "$out" "$file"
+            cleancss -o "$out" "$file"
           done
 
       - name: Commit obfuscated files
