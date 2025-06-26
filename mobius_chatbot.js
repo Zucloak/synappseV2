@@ -1,5 +1,5 @@
 /**
- * Mobius Chatbot - Synappse Official AI
+ * Test Mobius Chatbot - Synappse Official AI
  *
  * @version 7.1 - Vercel Proxy Integration
  * - **Key Improvement**: Rerouted all Gemini API calls through a Vercel serverless function (`/api/gemini-proxy`).
