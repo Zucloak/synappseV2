@@ -3,300 +3,356 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNAPPSE Order Request</title>
-    <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
-    <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
-    <link rel="icon" type="image/png" href="/favicon-48x48.png" sizes="48x48">
-    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
-    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <title>SYNAPPSE</title>
 
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
-    <link rel="icon" type="image/png" href="/android-chrome-192x192.png" sizes="192x192">
-    <link rel="icon" type="image/png" href="/android-chrome-512x512.png" sizes="512x512">
-    <link rel="manifest" href="/site.webmanifest">
+   <!-- Favicon Links - Updated to relative paths -->
+    <link rel="icon" type="image/png" href="favicon/favicon-16x16.png" sizes="16x16">
+    <link rel="icon" type="image/png" href="favicon/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="favicon/favicon-48x48.png" sizes="48x48">
+    <link rel="icon" type="image/png" href="favicon/favicon-96x96.png" sizes="96x96">
+    <link rel="shortcut icon" href="favicon/favicon.ico" type="image/x-icon">
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts - Inter -->
+    <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" sizes="180x180">
+
+    <link rel="icon" type="image/png" href="favicon/android-chrome-192x192.png" sizes="192x192">
+    <link rel="icon" type="image/png" href="favicon/android-chrome-512x512.png" sizes="512x512">
+
+    <link rel="manifest" href="favicon/site.webmanifest">
+
+    <meta name="theme-color" content="#ffffff">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Custom CSS File -->
-    <link rel="stylesheet" href="dist/style.css">
-
-    <!-- NEW: Client-side Firebase Initialization Script -->
-    <!-- This script will fetch the config from your Vercel API and then initialize Firebase. -->
-    <script type="module" src="firebase-init-client.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Link to external CSS file -->
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 md:p-8">
-    <!-- Firebase Status Indicator -->
-    <div id="firebaseStatus" class="mb-4 text-center text-sm font-medium hidden">
-        Connecting to Forms...
-    </div>
+<body oncopy="return false;" onselectstart="return false;" ondragstart="return false;">
 
-    <!-- Main form container -->
-    <div id="formContainer" class="w-full form-container-responsive mx-auto bg-purple-900 bg-opacity-70 rounded-xl shadow-2xl p-6 sm:p-10 space-y-8">
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-white text-center mb-6 drop-shadow-lg">SYNAPPSE Order Request</h1>
+    <!-- Mobius Guide Overlay -->
+    <div id="mobius-overlay" class="mobius-overlay"></div>
 
-        <!-- Progress Indicator for multi-step form -->
-        <div class="flex justify-center space-x-2 sm:space-x-4 mb-8">
-            <div id="step-indicator-0" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base font-bold bg-gray-300 text-gray-700 shadow-md">0</div>
-            <div id="step-indicator-1" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base font-bold bg-gray-300 text-gray-700 shadow-md">1</div>
-            <div id="step-indicator-2" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base font-bold bg-gray-300 text-gray-700 shadow-md">2</div>
-            <div id="step-indicator-3" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-base font-bold bg-gray-300 text-gray-700 shadow-md">3</div>
+    <section id="hero">
+        <div class="container">
+            <h1 class="brand-name">SYNAPPSE</h1>
+            <p class="tagline">Elegant. Efficient. Emotionally Compelling Digital Assets.</p>
+            <a href="#services" class="btn explore-btn">Explore Our Craft</a>
         </div>
+    </section>
 
-        <form id="orderForm" class="space-y-6">
-            <!-- Step 0: Data Privacy Act Law of the Philippines and Terms of Service -->
-            <div id="step0" class="form-step">
-                <h3 class="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">Important Notices</h3>
-                <div class="bg-purple-800 bg-opacity-50 p-6 rounded-lg mb-6">
-                    <h4 class="text-xl sm:text-2xl font-bold text-white mb-4">Data Privacy Act Law of the Philippines (RA 10173)</h4>
-                    <p class="text-sm text-gray-200 mb-4">
-                        By proceeding with this form, you acknowledge and agree that SYNAPPSE will collect, use, store, and process your personal information in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173).
-                        This includes, but is not limited to, your full name, email address, phone number, and details related to your order request.
-                        Your data will be used solely for the purpose of processing your request, communicating with you regarding our services, and fulfilling our obligations related to your order.
-                        We commit to protecting your privacy and ensuring the security of your personal data.
-                    </p>
-                    <p class="text-sm text-gray-200">
-                        For more details on how we handle your data, please refer to our full Privacy Policy.
-                    </p>
-                </div>
-
-                <div class="bg-purple-800 bg-opacity-50 p-6 rounded-lg mb-8 scrollable-terms">
-                    <h4 class="text-xl sm:text-2xl font-bold text-white mb-4">SYNAPPSE Website Terms of Service</h4>
-                    <p class="text-sm text-gray-200">Last Updated: June 23, 2025</p>
-                    <p class="text-sm text-gray-200 mb-4">Welcome to SYNAPPSE! These Terms of Service ("Terms") govern your access to and use of the SYNAPPSE website (synappse.vercel.app/) and all related services, content, and functionalities (collectively, the "Services") provided by SYNAPPSE ("we," "us," or "our").</p>
-                    <p class="text-sm text-gray-200 mb-4">By accessing or using our Services, you agree to be bound by these Terms. If you do not agree to these Terms, please do not use our Services.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">1. Acceptance of Terms</h5>
-                    <p class="text-sm text-gray-200 mb-4">By using SYNAPPSE Services, you confirm that you are at least 18 years old and agree to comply with and be bound by these Terms, as well as our Privacy Policy.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">2. Description of Services</h5>
-                    <p class="text-sm text-gray-200 mb-2">SYNAPPSE provides innovative digital creation services, including but not limited to:</p>
-                    <ul class="list-disc list-inside text-sm text-gray-200 mb-4 ml-4">
-                        <li>Digital Content & Design: Brand Style Guides, Ad Campaign Posters/Pubmats, Website Visual Concepts, Logos, 3D Product Models, Animated Group Websites, and other digital visual content.</li>
-                        <li>On-Site Computer Servicing: Troubleshooting, repair, setup, and maintenance of computer systems.</li>
-                    </ul>
-                    <p class="text-sm text-gray-200 mb-4">We reserve the right to modify or discontinue any part of the Services at any time without notice.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">3. User Responsibilities</h5>
-                    <p class="text-sm text-gray-200 mb-2">As a user of SYNAPPSE Services, you agree to:</p>
-                    <ul class="list-disc list-inside text-sm text-gray-200 mb-4 ml-4">
-                        <li>Provide accurate and complete information when engaging with our Services (e.g., during inquiries, project requests).</li>
-                        <li>Use the Services only for lawful purposes and in compliance with all applicable laws and regulations in the Philippines.</li>
-                        <li>Not engage in any activity that could damage, disable, overburden, or impair our Services or interfere with any other party's use of our Services.</li>
-                        <li>Not attempt to gain unauthorized access to any part of our Services, other accounts, computer systems, or networks connected to our Services.</li>
-                    </ul>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">4. Intellectual Property</h5>
-                    <p class="text-sm text-gray-200 mb-2"><strong>Our Content:</strong> All content on the SYNAPPSE website, including text, graphics, logos, images, software, and the compilation thereof, is the property of SYNAPPSE or its content suppliers and protected by Philippine and international copyright laws.</p>
-                    <p class="text-sm text-gray-200 mb-4"><strong>Your Project Content:</strong> For design projects, you retain ownership of the intellectual property rights in any content you provide to us for the purpose of creating your project. SYNAPPSE retains the right to display completed projects in its portfolio for promotional purposes, unless otherwise agreed upon in writing.</p>
-                    <p class="text-sm text-gray-200 mb-4"><strong>Service-Specific Deliverables:</strong> Upon full payment for completed services, ownership of the final deliverables (e.g., completed design files, website visual concepts) will transfer to you, as specified in your individual service agreement or project contract.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">5. Payment Terms (For Paid Services)</h5>
-                    <p class="text-sm text-gray-200 mb-2">All fees for services rendered will be agreed upon in a separate service agreement or project proposal.</p>
-                    <p class="text-sm text-gray-200 mb-2">Payment terms, including deposit requirements, milestone payments, and final payment, will be specified in the individual agreement.</p>
-                    <p class="text-sm text-gray-200 mb-4">Failure to make timely payments may result in the suspension or termination of Services.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">6. Disclaimers and Limitation of Liability</h5>
-                    <p class="text-sm text-gray-200 mb-2"><strong>No Warranties:</strong> The Services are provided "as is" and "as available" without any warranties of any kind, either express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, or non-infringement.</p>
-                    <p class="text-sm text-gray-200 mb-2"><strong>Service Performance:</strong> While we strive for excellence, SYNAPPSE does not guarantee that the Services will be uninterrupted, error-free, or secure.</p>
-                    <p class="text-sm text-gray-200 mb-4"><strong>Limitation of Liability:</strong> In no event shall SYNAPPSE, its owners, employees, or partners be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Services; (iii) any content obtained from the Services; or (iv) unauthorized access, use, or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence), or any other legal theory, whether or not we have been informed of the possibility of such damage.</p>
-                    <p class="text-sm text-gray-200 mb-4">In no event shall SYNAPPSE's total liability to you for all damages, losses, and causes of action exceed the amount paid by you, if any, for accessing or using our Services within the six (6) months immediately preceding the date of the claim.</p>
-                    <p class="text-sm text-gray-200 mb-4"><strong>Specific for On-Site Computer Servicing:</strong> While our partners exercise due diligence, SYNAPPSE is not responsible for any data loss, hardware damage, or other unforeseen issues that may occur during the troubleshooting, repair, or maintenance of computer systems. Clients are strongly advised to back up all critical data before any on-site service commences.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">7. Indemnification</h5>
-                    <p class="text-sm text-gray-200 mb-4">You agree to defend, indemnify, and hold harmless SYNAPPSE, its owners, employees, contractors, agents, officers, and directors from and against any and all claims, damages, obligations, losses, liabilities, costs or debt, and expenses (including but not limited to attorney's fees), resulting from or arising out of a) your use and access of the Services, by you or any person using your account and password; b) a breach of these Terms; or c) any content posted by you on the Services.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">8. Governing Law</h5>
-                    <p class="text-sm text-gray-200 mb-4">These Terms shall be governed and construed in accordance with the laws of the Republic of the Philippines, without regard to its conflict of law provisions.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">9. Dispute Resolution</h5>
-                    <p class="text-sm text-gray-200 mb-4">Any dispute, controversy, or claim arising out of or relating to these Terms, or the breach, termination, or validity thereof, shall be primarily resolved through good faith negotiation between the parties. If an amicable settlement cannot be reached, the dispute shall be submitted to the competent courts of Taguig City, Metro Manila, Philippines, to the exclusion of all other courts.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">10. Changes to Terms</h5>
-                    <p class="text-sm text-gray-200 mb-4">We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion. By continuing to access or use our Services after those revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, please stop using the Services.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">11. Termination</h5>
-                    <p class="text-sm text-gray-200 mb-4">We may terminate or suspend your access to our Services immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms. Upon termination, your right to use the Services will immediately cease.</p>
-
-                    <h5 class="text-lg font-semibold text-white mb-2">12. Contact Information</h5>
-                    <p class="text-sm text-gray-200 mb-2">If you have any questions about these Terms of Service, please contact us at:<br>
-                    Email: synpps@gmail.com<br>
-                    Website: synappse.vercel.app/</p>
-                </div>
-
-                <div class="flex items-center mb-6">
-                    <input type="checkbox" id="agreeToTerms" class="form-checkbox h-5 w-5 text-purple-600 rounded" required>
-                    <label for="agreeToTerms" class="ml-2 text-sm text-gray-200">I have read and agree to the <span class="font-bold">Data Privacy Act Law</span> and the <span class="font-bold">Terms of Service</span>.</label>
-                </div>
-
-                <div class="flex justify-end mt-8">
-                    <button type="button" id="next0" class="btn-primary">Next</button>
-                </div>
-            </div>
-
-            <!-- Step 1: Order Details -->
-            <div id="step1" class="form-step hidden">
-                <h3 class="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">Order Details</h3>
-                <p class="text-sm text-gray-200 text-center mb-8">All fields in this section are required.</p>
-
-                <div class="relative">
-                    <label for="typeOfOrder" class="block text-base font-medium text-gray-100 mb-2">Type of Order</label>
-                    <div id="customDropdownButton" class="mt-1 block w-full form-field cursor-pointer flex justify-between items-center" tabindex="0" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="dropdownOptions">
-                        <span id="selectedOptionText">Select Order Type</span>
-                        <svg class="w-5 h-5 text-white transform transition-transform duration-200" id="dropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                    <input type="hidden" id="typeOfOrder" name="typeOfOrder" required value="">
-
-                    <ul id="dropdownOptions" class="absolute z-10 w-full mt-1 rounded-md shadow-lg overflow-hidden hidden custom-dropdown-options" role="listbox" aria-labelledby="customDropdownButton">
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Branding">Branding</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Web Design">Web Design</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Marketing Campaign">Marketing Campaign</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Content Creation">Content Creation</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Market Research">Market Research</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="System Development">System Development</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Printed Materials">Printed Materials</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Personal Websites">Personal Websites</li>
-                        <li class="px-4 py-2 cursor-pointer text-white" data-value="Other">Other</li>
-                    </ul>
-                </div>
-
-                <div>
-                    <label for="detailedDescription" class="block text-base font-medium text-gray-100 mb-2">Detailed Description</label>
-                    <textarea id="detailedDescription" name="detailedDescription" rows="6" placeholder="Provide a detailed description of your project or request..." required
-                                  class="mt-1 block w-full form-field"></textarea>
-                </div>
-
-                <!-- Meeting Duration Options -->
-                <div class="space-y-4">
-                    <label class="block text-base font-medium text-gray-100 mb-2">Meeting Duration</label>
-                    <div class="flex items-center space-x-4">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="meetingDurationOption" value="fixed" class="form-radio h-4 w-4 text-purple-600" checked>
-                            <span class="ml-2 text-gray-200">1 Hour Meeting</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="meetingDurationOption" value="custom" class="form-radio h-4 w-4 text-purple-600">
-                            <span class="ml-2 text-gray-200">Custom Duration</span>
-                        </label>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
-                        <div class="w-full flex flex-col items-center date-time-input-group">
-                            <label for="meetingDate" class="block text-base font-medium text-gray-100 mb-2">Meeting Date</label>
-                            <input type="date" id="meetingDate" name="meetingDate" required
-                                   class="mt-1 block w-full form-field">
-                        </div>
-                        <div class="w-full flex flex-col items-center date-time-input-group">
-                            <label for="meetingStartTime" class="block text-base font-medium text-gray-100 mb-2">Meeting Start Time</label>
-                            <input type="time" id="meetingStartTime" name="meetingStartTime" required
-                                   class="mt-1 block w-full form-field">
-                        </div>
-                        <div id="meetingEndTimeGroup" class="w-full flex-col items-center date-time-input-group hidden sm:col-span-2">
-                             <label for="meetingEndTime" class="block text-base font-medium text-gray-100 mb-2">Meeting End Time</label>
-                             <input type="time" id="meetingEndTime" name="meetingEndTime"
-                                    class="mt-1 block w-full form-field">
-                        </div>
-                    </div>
-                </div>
-                <button type="button" id="checkAvailabilityBtn" class="btn-secondary w-full sm:w-auto mt-4">Check Availability</button>
-                <div id="availabilityMessage" class="mt-2 text-sm font-semibold text-center"></div>
-
-                <div class="flex justify-between mt-8">
-                    <button type="button" id="prev1" class="btn-secondary">Previous</button>
-                    <button type="button" id="next1" class="btn-primary">Next</button>
-                </div>
-            </div>
-
-            <!-- Step 2: Client Information -->
-            <div id="step2" class="form-step hidden">
-                <h3 class="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">Client Information</h3>
-                <p class="text-sm text-gray-200 text-center mb-8">All fields in this section are required.</p>
-
-                <div>
-                    <label for="fullName" class="block text-base font-medium text-gray-100 mb-2">Full Name</label>
-                    <input type="text" id="fullName" name="fullName" placeholder="Your Full Name" required
-                           class="mt-1 block w-full form-field">
-                </div>
-
-                <div>
-                    <label for="emailAddress" class="block text-base font-medium text-gray-100 mb-2">Email Address</label>
-                    <input type="email" id="emailAddress" name="emailAddress" placeholder="you@example.com" required
-                           class="mt-1 block w-full form-field">
-                </div>
-
-                <div>
-                    <label for="phoneNumber" class="block text-base font-medium text-gray-100 mb-2">Phone Number</label>
-                    <input type="text" id="phoneNumber" name="phoneNumber" placeholder="+63 9XX XXX XXXX" required
-                           class="mt-1 block w-full form-field"
-                           oninput="this.value=this.value.replace(/[^0-9]/g,'');" maxlength="15">
-                </div>
-
-                <div class="flex justify-between mt-8">
-                    <button type="button" id="prev2" class="btn-secondary">Previous</button>
-                    <button type="button" id="next2" class="btn-primary">Next</button>
-                </div>
-            </div>
-
-            <!-- Step 3: Social Media and Links -->
-            <div id="step3" class="form-step hidden">
-                <h3 class="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">Social Media and Links</h3>
-                <p class="text-sm text-gray-200 text-center mb-8">All fields in this section are optional.</p>
-
-                <div>
-                    <label for="facebookProfile" class="block text-base font-medium text-gray-100 mb-2">Facebook Profile/Page URL</label>
-                    <input type="url" id="facebookProfile" name="facebookProfile" placeholder="https://facebook.com/yourpage"
-                           class="mt-1 block w-full form-field">
-                </div>
-
-                <div>
-                    <label for="instagramHandle" class="block text-base font-medium text-gray-100 mb-2">Instagram Handle</label>
-                    <input type="text" id="instagramHandle" name="instagramHandle" placeholder="@yourinstagram"
-                           class="mt-1 block w-full form-field">
-                </div>
-
-                <div>
-                    <label for="twitterHandle" class="block text-base font-medium text-gray-100 mb-2">Twitter/X Handle</label>
-                    <input type="text" id="twitterHandle" name="twitterHandle" placeholder="@yourtwitterx"
-                           class="mt-1 block w-full form-field">
-                </div>
-
-                <div class="flex justify-between mt-8">
-                    <button type="button" id="prev3" class="btn-secondary">Previous</button>
-                    <button type="submit" class="btn-primary">Submit</button>
-                </div>
-            </div>
-
-            <div id="formMessage" class="mt-4 text-center text-sm font-medium text-white"></div>
-        </form>
-    </div>
-
-    <!-- Success Message Container (Initially Hidden) -->
-    <div id="successMessageContainer" class="w-full max-w-4xl mx-auto bg-purple-900 bg-opacity-70 rounded-xl shadow-2xl p-6 sm:p-10 space-y-8 hidden flex flex-col items-center justify-center text-center">
-        <svg class="w-32 h-32 text-green-400 mb-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: drawCheck 1s forwards ease-out;">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-8.87"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-        <h2 class="text-4xl sm:text-5xl font-extrabold text-white mb-4 drop-shadow-lg">Thank You!</h2>
-        <p class="text-lg text-gray-200 mb-8">Your order request has been submitted successfully. Here are the details:</p>
-        <div id="submittedDetails" class="text-left text-gray-200 w-full max-w-md">
-            <!-- Submitted details will be inserted here -->
+    <section id="services">
+        <div class="container">
+            <h2>What We Craft</h2>
+            <p>At SYNAPPSE, we bridge imagination with digital reality. Our services are tailored to elevate your presence and connect with your audience.</p>
         </div>
-        <button type="button" id="fillAgainBtn" class="btn-primary mt-8">Fill Another Request</button>
-    </div>
+        <div class="services-carousel-wrapper">
+            <div class="services-grid">
+                <div class="service-card" data-service-id="personal-websites"><i class="fas fa-globe icon"></i><h3>Personal Static Websites</h3><p>Clean, fast, and secure online presence for individuals. Perfect for personal branding or simple informational sites.</p><div class="preview-placeholder"><img src="assets/gifs/personal.gif" alt="Personal Website Preview"></div></div>
+                <div class="service-card" data-service-id="professional-portfolios"><i class="fas fa-briefcase icon"></i><h3>Professional Portfolios</h3><p>Showcase your work with a bespoke digital portfolio designed to impress and convert.</p><div class="preview-placeholder"><img src="assets/gifs/professional.gif" alt="Portfolio Preview"></div></div>
+                <div class="service-card" data-service-id="social-media-designs"><i class="fas fa-share-alt icon"></i><h3>Social Media Posting Designs</h3><p>Visually striking graphics and animations to make your social media content stand out.</p><div class="preview-placeholder"><img src="assets/gifs/socialmedia.gif" alt="Social Media Post Preview"></div></div>
+                <div class="service-card" data-service-id="birthday-sites"><i class="fas fa-birthday-cake icon"></i><h3>Customized Birthday Sites</h3><p>A unique, interactive digital experience to celebrate special birthdays for loved ones.</p><div class="preview-placeholder"><img src="assets/gifs/birthday.gif" alt="Birthday Site Preview"></div></div>
+                <div class="service-card" data-service-id="gamified-reviews"><i class="fas fa-gamepad icon"></i><h3>Gamified Review Materials</h3><p>Engaging static or interactive games to make learning and review fun and effective.</p><div class="preview-placeholder"><img src="assets/gifs/gamify.gif" alt="Gamified Review Preview"></div></div>
+                <div class="service-card" data-service-id="business-logos"><i class="fas fa-lightbulb icon"></i><h3>Business Logos</h3><p>Crafting memorable and impactful logos that encapsulate your brand's essence and vision.</p><div class="preview-placeholder"><img src="assets/gifs/logo.gif" alt="Logo Design Preview"></div></div>
+                <div class="service-card" data-service-id="website-gifts"><i class="fas fa-gift icon"></i><h3>"Website Gift" Portfolios</h3><p>A unique and heartfelt digital gift: a static portfolio for loved ones to cherish their memories.</p><div class="preview-placeholder"><img src="assets/gifs/gift.gif" alt="Website Gift Preview"></div></div>
+                <div class="service-card" data-service-id="3d-models"><i class="fas fa-cube icon"></i><h3>3D Product Models</h3><p>Immersive 3D models with embedded previews, bringing your products to life in the digital space.</p><div class="preview-placeholder"><img src="assets/gifs/3dmockups.gif" alt="3D Models Preview"></div></div>
+                <div class="service-card" data-service-id="animated-group-sites"><i class="fas fa-users icon"></i><h3>Animated Group Websites</h3><p>Dynamic and engaging websites for online communities, gaming clans, or special interest groups.</p><div class="preview-placeholder"><img src="assets/gifs/clan.gif" alt="Animated Group Websites Preview"></div></div>
+                <div class="service-card" data-service-id="countdown-calendars"><i class="fas fa-calendar-alt icon"></i><h3>Countdown Calendars</h3><p>Elegant countdowns for birthdays, product launches, events, or any special occasion.</p><div class="preview-placeholder"><img src="assets/gifs/calendars.gif" alt="Countdown Calendars Preview"></div></div>
+                <div class="service-card" data-service-id="ai-integration"><i class="fas fa-robot icon"></i><h3>Social Media AI-Integration</h3><p>Leverage AI for content generation, analytics, and automation to supercharge your social presence.</p><div class="preview-placeholder"><img src="assets/gifs/generate.gif" alt="Social Media AI-Integration Preview"></div></div>
+                <div class="service-card" data-service-id="on-site-computer-services"><i class="fas fa-tools icon"></i><h3>On-Site Computer Services</h3><p>Expert local technical support and troubleshooting for your computer systems and networks.</p><div class="preview-placeholder"><img src="assets/gifs/computer.gif" alt="On-Site Computer Services Preview"></div></div>
+                <div class="service-card" data-service-id="materials-printing"><i class="fas fa-print icon"></i><h3>Materials Printing</h3><p>High-quality printing services for various materials, from business cards to large format.</p><div class="preview-placeholder"><img src="assets/gifs/printing.gif" alt="Materials Printing Preview"></div></div>
+                <div class="service-card" data-service-id="email-management"><i class="fas fa-envelope-open-text icon"></i><h3>Email Management</h3><p>Streamline your communications with expert email organization, filtering, and response strategies.</p><div class="preview-placeholder"><img src="assets/gifs/emailing.gif" alt="Email Management Preview"></div></div>
+                <div class="service-card" data-service-id="market-research"><i class="fas fa-chart-line icon"></i><h3>Market Research for Startups</h3><p>Gain a competitive edge with in-depth market analysis, trend identification, and target audience insights.</p><div class="preview-placeholder"><img src="assets/gifs/marketresearch.gif" alt="Market Research Preview"></div></div>
+            </div>
+        </div>
+        <div class="service-dots"></div>
+    </section>
 
-    <!-- Modal for Privacy Policy/Terms (if needed for expanded view, currently embedded) -->
-    <div id="infoModal" class="modal">
+    <section id="about">
+        <div class="container">
+            <h2>Our Philosophy: The SYNAPPSE Ethos</h2>
+            <p>At SYNAPPSE, we believe in crafting digital experiences that are not just functional, but profoundly impactful. We blend cutting-edge engineering with timeless design principles to create assets that resonate deeply with users.</p>
+
+            <div class="philosophy-points">
+                <div class="philosophy-point" data-point-id="elegance"><h3>Elegance in Simplicity</h3><p>We strip away the superfluous to reveal the essential. Our designs are clean, intuitive, and beautiful in their clarity, focusing on core purpose.</p></div>
+                <div class="philosophy-point" data-point-id="efficiency"><h3>Engineered for Efficiency</h3><p>Every line of code, every interaction, is optimized for performance and seamless user experience. We build for speed, reliability, and scalability to ensure optimal functionality.</p></div>
+                <div class="philosophy-point" data-point-id="emotion"><h3>Emotionally Compelling</h3><p>We craft experiences that delight, inspire, and forge genuine connections. Our work aims to evoke positive responses and create lasting impressions.</p></div>
+                <div class="philosophy-point" data-point-id="usability"><h3>Uncompromising Usability</h3><p>We prioritize the user, ensuring our interfaces are intuitive, accessible, and rigorously tested for effortless interaction, making complex tasks simple.</p></div>
+                <div class="philosophy-point" data-point-id="storytelling"><h3>Visual Storytelling</h3><p>Every project tells a compelling visual narrative, transforming complex ideas into engaging experiences that resonate with the audience.</p></div>
+                <div class="philosophy-point" data-point-id="adaptability"><h3>Adaptive & Future-Proof</h3><p>Our designs are responsive, mobile-first, and built to evolve with technology, ensuring your digital assets remain relevant and functional for years to come.</p></div>
+            </div>
+            <div class="philosophy-dots"></div>
+        </div>
+    </section>
+
+    <section id="achievements">
+        <div class="container">
+            <h2>Building Trust Through Expertise</h2>
+            <p>Our commitment to excellence is backed by recognized digital achievements. These badges represent our dedication to continuous learning and mastery in various Google technologies and platforms, ensuring you receive the highest quality of service.</p>
+
+            <div class="badges-grid">
+                <div class="badge-item animate-hidden" data-badge-id="firebase-gemini"><div class="badge-front"><img src="assets/images/firebase.png" alt="Firebase Extensions with Gemini Badge"><h4>Firebase Extensions with Gemini</h4></div><div class="badge-back"><p>AI Integration with Firebase</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="gpay-for-web"><div class="badge-front"><img src="assets/images/gpayment.png" alt="Google Pay for Web Badge"><h4>Google Pay for Web</h4></div><div class="badge-back"><p>Secure Web Payments</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="skillsboost"><div class="badge-front"><img src="assets/images/cloud.png" alt="Google Cloud Skills Boost Badge"><h4>Google Cloud Skills Boost</h4></div><div class="badge-back"><p>Google Cloud Expertise</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="ai-gemini-101"><div class="badge-front"><img src="assets/images/gemini.png" alt="AI Gemini 101 Badge"><h4>AI Gemini 101</h4></div><div class="badge-back"><p>Foundational AI (Gemini) Skills</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="crossword-solutions"><div class="badge-front"><img src="assets/images/crossword.png" alt="Google Crossword Solutions Badge"><h4>Google Crossword Solutions</h4></div><div class="badge-back"><p>Interactive Puzzle Development</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="skillshop-certified"><div class="badge-front"><img src="assets/images/skillshop.png" alt="Google Skillshop Certificate"><h4>Google Skillshop Certified</h4></div><div class="badge-back"><p>Google Marketing Platform Certified</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="ai-travel-app"><div class="badge-front"><img src="assets/images/travel.png" alt="AI-powered Travel App Solution Badge"><h4>AI-powered Travel App Solution</h4></div><div class="badge-back"><p>AI-powered Travel App Development</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="generative-ai-game-dev"><div class="badge-front"><img src="assets/images/game.png" alt="Generative AI in Game Development Badge"><h4>Generative AI in Game Dev</h4></h4></div><div class="badge-back"><p>Generative AI in Games</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="living-canvas-game"><div class="badge-front"><img src="assets/images/living.png" alt="Living Canvas Game Badge"><h4>Living Canvas (AI Puzzle Game)</h4></div><div class="badge-back"><p>AI Puzzle Game Creation</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="gemini-pro-vision"><div class="badge-front"><img src="assets/images/pro.png" alt="Gemini Pro Vision Model Badge"><h4>Gemini Pro Vision Model</h4></div><div class="badge-back"><p>Advanced Image Understanding with AI</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="google-agentic-barista-app"><div class="badge-front"><img src="assets/images/barista.png" alt="Google Agentic Barista Badge"><h4>Google Agentic Barista App Solution</h4></div><div class="badge-back"><p>Coffee-making AI Solutions</p></div></div>
+                <div class="badge-item animate-hidden" data-badge-id="gemini-web-apps"><div class="badge-front"><img src="assets/images/geminiwebapps.png" alt="Getting started with Gemini API and Web Apps Badge"><h4>Getting started with Gemini API and Web Apps</h4></div><div class="badge-back"><p>Develop AI web apps with Gemini API</p></div></div>
+            </div>
+            <button id="viewCredentialsBtn" class="btn">View Credentials</button>
+        </div>
+    </section>
+
+    <section id="cta">
+        <div class="container">
+            <h2>Ready to Connect?</h2>
+            <p>Let's craft your next digital masterpiece. Whether it's a new website, a captivating logo, or an AI-powered solution, SYNAPPSE is here to bring your vision to life.</p>
+            <div class="cta-button-wrapper">
+                <a href="https://clientforms.vercel.app/" class="btn contact-btn" target="_blank" rel="noopener noreferrer">Get in Touch Now!</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="social-links">
+                <a href="https://www.facebook.com/SynappseOfficial" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                <a href="https://www.tiktok.com/@synappse.official?lang=en" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+                <a href="https://www.instagram.com/synappse_official/" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p class="footer-passion-text">Crafted with precision and passion.</p>
+            <div class="footer-links">
+                <a href="#" id="faqLink">FAQ's</a>
+                <a href="#" id="termsLink">Terms of Service</a>
+                <a href="#" id="privacyLink">Privacy Policy</a>
+            </div>
+            <p class="footer-copyright">&copy; 2025 SYNAPPSE. All rights reserved.</p>
+            <div class="payment-methods">
+                <div class="payment-method-item">
+                    <span class="payment-logo gcash-logo" title="Yes, we accept GCash payments">GCASH</span>
+                </div>
+                <div class="payment-method-item">
+                    <i class="fab fa-paypal payment-logo" title="Yes, we accept PayPal payments"></i>
+                </div>
+                <div class="payment-method-item">
+                    <span class="payment-logo maya-logo" title="Yes, we accept Maya payments">MAYA</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div id="credentialsModal" class="modal-overlay">
         <div class="modal-content">
-            <span class="close-button" id="closeModalBtn">&times;</span>
-            <div id="modalContentArea">
-                <!-- Content will be loaded here dynamically -->
+            <button class="modal-close-btn">&times;</button>
+            <h3>Our Credentials</h3>
+            <div id="modalBadgesGrid" class="badges-grid">
             </div>
         </div>
     </div>
 
-    <!-- Custom JavaScript File -->
-    <script type="module" src="dist/script.js"></script>
+    <div id="faqModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <h3>Frequently Asked Questions</h3>
+            <div class="modal-text-content">
+                <h4>What services does SYNAPPSE offer?</h4>
+                <p>SYNAPPSE offers a wide range of digital services including personal and professional websites, social media designs, customized birthday sites, gamified review materials, business logos, 3D product models, animated group websites, countdown calendars, AI integration, on-site computer services, materials printing, email management, and market research for startups.</p>
+
+                <h4>How long does it take to complete a project?</h4>
+                <p>Project timelines vary depending on the complexity and scope of the service. We provide an estimated timeline after a detailed consultation and understanding of your specific needs.</p>
+
+                <h4>Can you help with ongoing maintenance after the project is done?</h4>
+                <p>Yes, we offer various maintenance and support packages to ensure your digital assets remain updated, secure, and perform optimally. This can be discussed during our initial consultation.</p>
+
+                <h4>What is your process for working with clients?</h4>
+                <p>Our process typically involves an initial consultation to understand your needs, followed by a proposal and agreement. Then, we move into design and development, client reviews, revisions, and final deployment. We prioritize clear communication throughout the entire process.</p>
+
+                <h4>How do I get started with a project?</h4>
+                <p>You can get started by clicking the "Get in Touch Now!" button in the CTA section or by navigating to our contact form directly. We'll schedule a consultation to discuss your vision and requirements.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="termsModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <h3>Terms of Service</h3>
+            <div class="modal-text-content">
+                <h4>SYNAPPSE Website Terms of Service</h4>
+                <p>Last Updated: June 23, 2025</p>
+                <p>Welcome to SYNAPPSE! These Terms of Service ("Terms") govern your access to and use of the SYNAPPSE website (synappse.vercel.app/) and all related services, content, and functionalities (collectively, the "Services") provided by SYNAPPSE ("we," "us," or "our").</p>
+                <p>By accessing or using our Services, you agree to be bound by these Terms. If you do not agree to these Terms, please do not use our Services.</p>
+
+                <h4>1. Acceptance of Terms</h4>
+                <p>By using SYNAPPSE Services, you confirm that you are at least 18 years old and agree to comply with and be bound by these Terms, as well as our Privacy Policy.</p>
+
+                <h4>2. Description of Services</h4>
+                <p>SYNAPPSE provides innovative digital creation services, including but not limited to:</p>
+                <ul>
+                    <li>Digital Content & Design: Brand Style Guides, Ad Campaign Posters/Pubmats, Website Visual Concepts, Logos, 3D Product Models, Animated Group Websites, and other digital visual content.</li>
+                    <li>On-Site Computer Servicing: Troubleshooting, repair, setup, and maintenance of computer systems.</li>
+                </ul>
+                <p>We reserve the right to modify or discontinue any part of the Services at any time without notice.</p>
+
+                <h4>3. User Responsibilities</h4>
+                <p>As a user of SYNAPPSE Services, you agree to:</p>
+                <ul>
+                    <li>Provide accurate and complete information when engaging with our Services (e.g., during inquiries, project requests).</li>
+                    <li>Use the Services only for lawful purposes and in compliance with all applicable laws and regulations in the Philippines.</li>
+                    <li>Not engage in any activity that could damage, disable, overburden, or impair our Services or interfere with any other party's use of our Services.</li>
+                    <li>Not attempt to gain unauthorized access to any part of our Services, other accounts, computer systems, or networks connected to our Services.</li>
+                </ul>
+
+                <h4>4. Intellectual Property</h4>
+                <p><strong>Our Content:</strong> All content on the SYNAPPSE website, including text, graphics, logos, images, software, and the compilation thereof, is the property of SYNAPPSE or its content suppliers and protected by Philippine and international copyright laws.</p>
+                <p><strong>Your Project Content:</strong> For design projects, you retain ownership of the intellectual property rights in any content you provide to us for the purpose of creating your project. SYNAPPSE retains the right to display completed projects in its portfolio for promotional purposes, unless otherwise agreed upon in writing.</p>
+                <p><strong>Service-Specific Deliverables:</strong> Upon full payment for completed services, ownership of the final deliverables (e.g., completed design files, website visual concepts) will transfer to you, as specified in your individual service agreement or project contract.</p>
+
+                <h4>5. Payment Terms (For Paid Services)</h4>
+                <p>All fees for services rendered will be agreed upon in a separate service agreement or project proposal.</p>
+                <p>Payment terms, including deposit requirements, milestone payments, and final payment, will be specified in the individual agreement.</p>
+                <p>Failure to make timely payments may result in the suspension or termination of Services.</p>
+
+                <h4>6. Disclaimers and Limitation of Liability</h4>
+                <p><strong>No Warranties:</strong> The Services are provided "as is" and "as available" without any warranties of any kind, either express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, or non-infringement.</p>
+                <p><strong>Service Performance:</strong> While we strive for excellence, SYNAPPSE does not guarantee that the Services will be uninterrupted, error-free, or secure.</p>
+                <p><strong>Limitation of Liability:</strong> In no event shall SYNAPPSE, its owners, employees, or partners be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Services; (ii) any conduct or content of any third party on the Services; (iii) any content obtained from the Services; or (iv) unauthorized access, use, or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence), or any other legal theory, whether or not we have been informed of the possibility of such damage.</p>
+                <p>In no event shall SYNAPPSE's total liability to you for all damages, losses, and causes of action exceed the amount paid by you, if any, for accessing or using our Services within the six (6) months immediately preceding the date of the claim.</p>
+                <p><strong>Specific for On-Site Computer Servicing:</strong> While our partners exercise due diligence, SYNAPPSE is not responsible for any data loss, hardware damage, or other unforeseen issues that may occur during the troubleshooting, repair, or maintenance of computer systems. Clients are strongly advised to back up all critical data before any on-site service commences.</p>
+
+                <h4>7. Indemnification</h4>
+                <p>You agree to defend, indemnify, and hold harmless SYNAPPSE, its owners, employees, contractors, agents, officers, and directors from and against any and all claims, damages, obligations, losses, liabilities, costs or debt, and expenses (including but not limited to attorney's fees), resulting from or arising out of a) your use and access of the Services, by you or any person using your account and password; b) a breach of these Terms; or c) any content posted by you on the Services.</p>
+
+                <h4>8. Governing Law</h4>
+                <p>These Terms shall be governed and construed in accordance with the laws of the Republic of the Philippines, without regard to its conflict of law provisions.</p>
+
+                <h4>9. Dispute Resolution</h4>
+                <p>Any dispute, controversy, or claim arising out of or relating to these Terms, or the breach, termination, or validity thereof, shall be primarily resolved through good faith negotiation between the parties. If an amicable settlement cannot be reached, the dispute shall be submitted to the competent courts of Taguig City, Metro Manila, Philippines, to the exclusion of all other courts.</p>
+
+                <h4>10. Changes to Terms</h4>
+                <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion. By continuing to access or use our Services after those revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, please stop using the Services.</p>
+
+                <h4>11. Termination</h4>
+                <p>We may terminate or suspend your access to our Services immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms. Upon termination, your right to use the Services will immediately cease.</p>
+
+                <h4>12. Contact Information</h4>
+                <p>If you have any questions about these Terms of Service, please contact us at:<br>
+                Email: synpps@gmail.com<br>
+                Website: synappse.vercel.app/</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="privacyModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <h3>Privacy Policy</h3>
+            <div class="modal-text-content">
+                <h4>SYNAPPSE Website Privacy Policy</h4>
+                <p>Last Updated: June 23, 2025</p>
+                <p>At SYNAPPSE, we are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how SYNAPPSE ("we," "us," or "our") collects, uses, processes, stores, and discloses your personal data when you use our website (synappse.vercel.app/) and all related services (collectively, the "Services").</p>
+                <p>By accessing or using our Services, you signify your understanding of and consent to the practices described in this Privacy Policy. This policy is designed to comply with the Philippine Data Privacy Act of 2012 (Republic Act No. 10173).</p>
+
+                <h4>1. Information We Collect</h4>
+                <p>We collect various types of information to provide and improve our Services to you:</p>
+                <p><strong>Personal Information You Directly Provide:</strong> This includes information you voluntarily give us when you inquire about our services, sign up for programs (like the Pilot Program), engage us for projects, or communicate with us. This may include:</p>
+                <ul>
+                    <li>Contact Details: Your name, email address, phone number, and physical address (especially for on-site computer servicing).</li>
+                    <li>Business Information: Your company name, industry, and specific project requirements or technical issues for design or IT services.</li>
+                    <li>Communication Content: Records of your correspondence with us (e.g., emails, chat messages).</li>
+                </ul>
+                <p><strong>Usage Data (Automatically Collected):</strong> When you access and use our website, we may automatically collect certain information about your device and Browse activity. This Usage Data may include:</p>
+                <ul>
+                    <li>Your computer's Internet Protocol (IP) address.</li>
+                    <li>Browser type and version.</li>
+                    <li>Pages of our Service that you visit.</li>
+                    <li>The time and date of your visit.
+                    <li>The time spent on those pages.</li>
+                    <li>Unique device identifiers and other diagnostic data.</li>
+                </ul>
+                <p><strong>Cookies and Tracking Technologies:</strong> We use cookies and similar tracking technologies to track the activity on our Service and hold certain information. Cookies are files with a small amount of data that may include an anonymous unique identifier. You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent. However, if you do not accept cookies, you may not be able to use some portions of our Service. Examples of Cookies we may use include:</p>
+                <ul>
+                    <li>Session Cookies: To operate our Service.</li>
+                    <li>Preference Cookies: To remember your preferences and various settings.</li>
+                    <li>Security Cookies: For security purposes.</li>
+                </ul>
+
+                <h4>2. How We Use Your Information</h4>
+                <p>SYNAPPSE uses the collected data for various purposes:</p>
+                <ul>
+                    <li>To provide, operate, and maintain our Services.</li>
+                    <li>To fulfill and manage your requests for design, content creation, and on-site computer servicing projects.</li>
+                    <li>To communicate with you, including responding to inquiries, providing project updates, and sending service-related notifications.</li>
+                    <li>To improve, personalize, and expand our Services and website experience.</li>
+                    <li>To understand and analyze how you use our Services (e.g., through website analytics).</li>
+                    <li>To process payments for services rendered.</li>
+                    <li>To detect, prevent, and address technical issues or fraudulent activities.</li>
+                    <li>To comply with legal obligations and enforce our Terms of Service.</li>
+                    <li>To send you promotional communications, newsletters, and information about special offers that may be of interest to you, always providing an option to opt-out.</li>
+                </ul>
+
+                <h4>3. Sharing and Disclosure of Your Information</h4>
+                <p>We may share your personal information in the following situations:</p>
+                <ul>
+                    <li><strong>With Service Providers and Partners:</strong> We may share your information with trusted third-party vendors, consultants, and other service providers who perform services on our behalf and require access to such information to do so. This includes:</li>
+                    <ul>
+                        <li>On-Site Computer Service Partners: For the sole purpose of scheduling and executing on-site computer servicing, your contact details (name, address, contact number) and relevant technical issue descriptions will be shared with the individual friend(s) dispatched to perform the service. They are bound by confidentiality agreements.</li>
+                        <li>Website Hosting and Analytics Providers: To operate our website and analyze its usage.</li>
+                        <li>Payment Processors: To facilitate secure payment transactions (we do not store full credit card details on our servers).</li>
+                    </ul>
+                    <li><strong>For Legal Reasons:</strong> We may disclose your personal data if required to do so by law or in response to valid requests by public authorities (e.g., a court or a government agency like the DTI or BIR).</li>
+                    <li><strong>Business Transfers:</strong> In connection with, or during negotiations of, any merger, sale of company assets, financing, or acquisition of all or a portion of our business by another company.</li>
+                    <li><strong>With Your Consent:</strong> We may disclose your personal information for any other purpose with your explicit consent.</li>
+                </ul>
+
+                <h4>4. Data Security</h4>
+                <p>The security of your personal data is important to us. We implement reasonable and appropriate organizational, physical, and technical measures designed to protect the personal data we collect from loss, misuse, unauthorized access, disclosure, alteration, and destruction. However, please be aware that no method of transmission over the Internet or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your personal data, we cannot guarantee its absolute security.</p>
+
+                <h4>5. Data Retention</h4>
+                <p>SYNAPPSE will retain your personal data only for as long as is necessary for the purposes set out in this Privacy Policy, to comply with our legal obligations (for example, if we are required to retain your data to comply with applicable laws), resolve disputes, and enforce our legal agreements and policies.</p>
+
+                <h4>6. Your Rights Under the Data Privacy Act of 2012 (RA 10173)</h4>
+                <p>As a data subject under Philippine law, you have the following rights regarding your personal data:</p>
+                <ul>
+                    <li>Right to Be Informed: You have the right to be informed whether personal information pertaining to you is being processed.</li>
+                    <li>Right to Object: You have the right to object to the processing of your personal information, especially when it is used for direct marketing, automated processing, or profiling.</li>
+                    <li>Right to Access: You have the right to reasonable access to your personal information that we process.</li>
+                    <li>Right to Rectification: You have the right to dispute the inaccuracy or error in your personal information and have us correct it immediately and accordingly.</li>
+                    <li>Right to Erasure or Blocking: You have the right to demand the suspension, withdrawal, removal, or destruction of your personal information from our filing system under certain circumstances.</li>
+                    <li>Right to Claim Damages: You have the right to be indemnified for any damages sustained due to inaccurate, incomplete, outdated, false, unlawfully obtained, or unauthorized use of your personal information.</li>
+                    <li>Right to Data Portability: You have the right to obtain a copy of your data in an electronic or structured format, commonly used and allows for further use.</li>
+                    <li>Right to File a Complaint: If you believe your data privacy rights have been violated, you have the right to file a complaint with the National Privacy Commission (NPC).</li>
+                </ul>
+                <p>To exercise any of these rights, please contact us using the information provided in the "Contact Information" section below.</p>
+
+                <h4>7. Third-Party Links</h4>
+                <p>Our Service may contain links to other websites that are not operated by us. If you click on a third-party link, you will be directed to that third party's site. We strongly advise you to review the Privacy Policy of every site you visit. We have no control over and assume no responsibility for the content, privacy policies, or practices of any third-party sites or services.</p>
+
+                <h4>8. Children's Privacy</h4>
+                <p>Our Services are not intended for use by individuals under the age of 18. We do not knowingly collect personally identifiable information from anyone under the age of 18. If you are a parent or guardian and you are aware that your child has provided us with Personal Data, please contact us. If we become aware that we have collected Personal Data from children without verification of parental consent, we take steps to remove that information from our servers.</p>
+
+                <h4>9. Changes to This Privacy Policy</h4>
+                <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. We will let you know via email and/or a prominent notice on our Service, prior to the change becoming effective and update the "Last Updated" date at the top of this Privacy Policy. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.
+
+                <h4>10. Contact Information</h4>
+                <p>If you have any questions about this Privacy Policy, your personal data, or wish to exercise your rights as a data subject, please contact us:<br>
+                Email: synpps@gmail.com<br>
+                Website: synappse.vercel.app/</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <!-- Link to external JavaScript file -->
+    <script src="dist/script.js"></script>
+    <!-- Keep the Mobius Chatbot script as it was originally -->
+    <script src="dist/mobius_chatbot.js" type="module" defer></script>
+
 </body>
 </html>
