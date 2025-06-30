@@ -1,0 +1,78 @@
+# ====================================================
+# SYNAPPSE | robots.txt
+# ULTRA OPTIMIZED FOR AI SEO, AEO, GEO, AND LLM INDEXING
+# DO NOT MODIFY UNLESS YOU UNDERSTAND THE FULL STRATEGY
+# ====================================================
+
+# === Universal Access ===
+User-agent: *
+Disallow:
+Allow: /
+
+# === AI & Generative Crawlers: Explicitly Allowed ===
+User-agent: ChatGPT-User
+User-agent: GPTBot
+User-agent: Google-Extended
+User-agent: ClaudeBot
+User-agent: GeminiBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: NeevaAI
+User-agent: Sogou
+User-agent: YouBot
+User-agent: Amazonbot
+User-agent: FacebookBot
+User-agent: Twitterbot
+User-agent: LinkedInBot
+User-agent: Applebot
+User-agent: Pinterestbot
+Allow: /
+
+# === Search Engines & Indexers: Explicit Control ===
+User-agent: Googlebot
+User-agent: Googlebot-Image
+User-agent: Bingbot
+User-agent: Baiduspider
+User-agent: Yandex
+User-agent: DuckDuckBot
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: CCBot
+User-agent: PetalBot
+User-agent: DotBot
+Allow: /
+
+# === Performance Settings ===
+Crawl-delay: 5
+Request-rate: 1/5
+
+# === Disallowed Paths (Security & Clean Indexing) ===
+Disallow: /api/
+Disallow: /admin/
+Disallow: /backend/
+Disallow: /private/
+Disallow: /hidden/
+Disallow: /tmp/
+Disallow: /trash/
+Disallow: /checkout/
+Disallow: /auth/
+Disallow: /login/
+Disallow: /logout/
+
+# === Sitemaps for AI Summarizers & Crawlers ===
+Sitemap: https://synappse.vercel.app/sitemap.xml
+Sitemap: https://synappse.vercel.app/answers/sitemap.xml
+Sitemap: https://clientforms.vercel.app/sitemap.xml
+
+# === AI Discovery Metadata (Emerging Protocols) ===
+# Supports OpenAI, Perplexity, Google-Extended, and ClaudeBot
+# These directives provide clearer AI summarization targets
+# Experimental support for "llm-content-hints" is incoming
+# Ensure all /answers/ and /faq/ pages are crawlable
+
+# === Identity Declaration (optional but trust-building) ===
+Host: synappse.vercel.app
+Contact: synpps@gmail.com
+
+# === End of File ===
